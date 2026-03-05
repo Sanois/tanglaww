@@ -1,18 +1,39 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [pass, setPassword] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleQRCodePress = () => {
-    router.push('/scan-qr');
+    router.push("/scan-qr");
   };
 
   const handleSignIn = () => {
-    router.replace('/succes');
+    const errors: string[] = [];
+    if (!email.trim() || !pass.trim())
+      errors.push("Kindly fill in all the necessary information.");
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      errors.push("Please enter a valid email address.");
+
+    if (errors.length > 0) {
+      setErrors(errors);
+      return;
+    }
+    setErrors([]);
+    router.replace("/succes");
   };
 
   return (
@@ -23,41 +44,69 @@ export default function SignInScreen() {
 
       <View style={styles.content}>
         <Text style={styles.headerTitle}>Sign in</Text>
-        <Text style={styles.headerSubtitle}>Ready to beat the boards? Sign in now!</Text>
-        
+        <Text style={styles.headerSubtitle}>
+          Ready to beat the boards? Sign in now!
+        </Text>
+
         <Text style={styles.welcomeText}>Welcome Back, Achiever!</Text>
 
         <View style={styles.card}>
           <Text style={styles.inputLabel}>Email Address:</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Email Address" 
+          <TextInput
+            style={styles.input}
+            placeholder="Email Address"
             placeholderTextColor="#A9A9A9"
             keyboardType="email-address"
             autoCapitalize="none"
+            value={email}
+            onChangeText={(val) => setEmail(val)}
           />
 
           <Text style={styles.inputLabel}>Password:</Text>
           <View style={styles.passwordContainer}>
-            <TextInput 
-              style={[styles.input, { flex: 1, borderBottomWidth: 0, marginBottom: 0 }]} 
-              placeholder="Password" 
+            <TextInput
+              style={[
+                styles.input,
+                { flex: 1, borderBottomWidth: 0, marginBottom: 0 },
+              ]}
+              placeholder="Password"
               secureTextEntry={!showPassword}
               placeholderTextColor="#A9A9A9"
+              value={pass}
+              onChangeText={(val) => setPassword(val)}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="gray" />
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={20}
+                color="gray"
+              />
             </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 5 }}>
+
+          <TouchableOpacity style={{ alignSelf: "flex-end", marginTop: 5 }}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.signInBtn}
-            onPress={handleSignIn}
-          >
+          {errors.length > 0 && (
+            <View style={styles.errorBanner}>
+              <Ionicons
+                name="alert-circle"
+                size={18}
+                color="#c0392b"
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                {errors.map((e, i) => (
+                  <Text key={i} style={styles.errorText}>
+                    • {e}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn}>
             <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
 
@@ -68,7 +117,12 @@ export default function SignInScreen() {
           </View>
 
           <TouchableOpacity style={styles.qrBtn} onPress={handleQRCodePress}>
-            <Ionicons name="qr-code-outline" size={20} color="white" style={{ marginRight: 10 }} />
+            <Ionicons
+              name="qr-code-outline"
+              size={20}
+              color="white"
+              style={{ marginRight: 10 }}
+            />
             <Text style={styles.qrText}>Sign in with QR code</Text>
           </TouchableOpacity>
         </View>
@@ -76,11 +130,11 @@ export default function SignInScreen() {
         <View style={styles.footerRow}>
           <View>
             <Text style={styles.footerLabel}>New here?</Text>
-            <TouchableOpacity onPress={() => router.push('/enroll')}>
+            <TouchableOpacity onPress={() => router.push("/enroll")}>
               <Text style={styles.footerLinkBlue}>Enroll now!</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.footerLabel}>For Instructors</Text>
             <TouchableOpacity>
               <Text style={styles.footerLinkYellow}>Admin Sign in</Text>
@@ -93,36 +147,98 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white' },
+  container: { flex: 1, backgroundColor: "white" },
   backButton: { padding: 20 },
-  content: { paddingHorizontal: 25, alignItems: 'center' },
-  headerTitle: { fontSize: 32, fontWeight: 'bold', color: '#2F459B' },
-  headerSubtitle: { fontSize: 14, color: '#444', marginTop: 5, textAlign: 'center' },
-  welcomeText: { fontSize: 20, fontWeight: '700', marginVertical: 25, color: '#333' },
-  card: { 
-    width: '100%', 
-    padding: 20, 
-    borderRadius: 15, 
-    backgroundColor: '#fff', 
-    elevation: 4, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1, 
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 }
+  content: { paddingHorizontal: 25, alignItems: "center" },
+  headerTitle: { fontSize: 32, fontWeight: "bold", color: "#2F459B" },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#444",
+    marginTop: 5,
+    textAlign: "center",
   },
-  inputLabel: { fontWeight: 'bold', color: '#555', marginBottom: 5 },
-  input: { borderBottomWidth: 1, borderBottomColor: '#CCC', paddingVertical: 8, marginBottom: 20, fontSize: 16 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#CCC', marginBottom: 5 },
-  forgotText: { color: '#A9A9A9', fontSize: 12, marginBottom: 20 },
-  signInBtn: { backgroundColor: '#2F459B', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  signInText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  line: { flex: 1, height: 1, backgroundColor: '#EEE' },
-  dividerText: { marginHorizontal: 10, color: '#999', fontSize: 12 },
-  qrBtn: { backgroundColor: '#0D2A94', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  qrText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 30 },
-  footerLabel: { color: '#666', fontSize: 12, marginBottom: 2 },
-  footerLinkBlue: { color: '#2F459B', fontWeight: 'bold', textDecorationLine: 'underline' },
-  footerLinkYellow: { color: '#FFD75E', fontWeight: 'bold', textDecorationLine: 'underline' },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginVertical: 25,
+    color: "#333",
+  },
+  card: {
+    width: "100%",
+    padding: 20,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  inputLabel: { fontWeight: "bold", color: "#555", marginBottom: 5 },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#CCC",
+    paddingVertical: 8,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#CCC",
+    marginBottom: 5,
+  },
+  forgotText: { color: "#A9A9A9", fontSize: 12, marginBottom: 20 },
+  signInBtn: {
+    backgroundColor: "#2F459B",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  signInText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  line: { flex: 1, height: 1, backgroundColor: "#EEE" },
+  dividerText: { marginHorizontal: 10, color: "#999", fontSize: 12 },
+  qrBtn: {
+    backgroundColor: "#0D2A94",
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  qrText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 30,
+  },
+  footerLabel: { color: "#666", fontSize: 12, marginBottom: 2 },
+  footerLinkBlue: {
+    color: "#2F459B",
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+  footerLinkYellow: {
+    color: "#FFD75E",
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+  errorBanner: {
+    flexDirection: "row",
+    backgroundColor: "#fff5f5",
+    borderWidth: 1,
+    borderColor: "#e74c3c",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: { color: "#c0392b", fontSize: 13, lineHeight: 20 },
 });
