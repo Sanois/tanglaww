@@ -33,6 +33,7 @@ export default function SignInScreen() {
       return;
     }
     setErrors([]);
+    // This navigates to your main student success screen
     router.replace("/succes");
   };
 
@@ -136,7 +137,8 @@ export default function SignInScreen() {
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.footerLabel}>For Instructors</Text>
-            <TouchableOpacity>
+            {/* Navigates to the Admin Sign In page */}
+            <TouchableOpacity onPress={() => router.push("/admin" as any)}>
               <Text style={styles.footerLinkYellow}>Admin Sign in</Text>
             </TouchableOpacity>
           </View>
