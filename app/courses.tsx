@@ -16,7 +16,6 @@ import HamburgerMenu from './hamburger';
 export default function CoursesScreen() {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   const COURSES = [
@@ -32,7 +31,6 @@ export default function CoursesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      
       <Modal
         animationType="fade"
         transparent={true}
@@ -68,9 +66,15 @@ export default function CoursesScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.imageSection}>
+                {/* Fixed Progress Circle logic */}
                 <View style={styles.progressBadge}>
+                  <View style={[
+                    styles.progressCircle, 
+                    { borderColor: course.progress === 100 ? "#2ECC71" : "#BDC3C7" }
+                  ]} />
                   <Text style={styles.progressText}>{course.progress}%</Text>
                 </View>
+                
                 <Ionicons 
                   name={course.isLocked ? "lock-closed" : "image-outline"} 
                   size={40} 
@@ -93,14 +97,36 @@ export default function CoursesScreen() {
 
             {expandedId === course.id && (
               <View style={styles.dropdownContent}>
-                <TouchableOpacity style={styles.dropdownItem}>
+                {/* Handouts available for all unlocked */}
+                <TouchableOpacity 
+                  style={styles.dropdownItem} 
+                  onPress={() => router.push({
+                    pathname: "/materials/handout",
+                    params: { courseTitle: course.title }
+                  })}
+                >
                   <Ionicons name="document-text-outline" size={20} color="#2F459B" />
                   <Text style={styles.dropdownText}>Handouts</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity style={styles.dropdownItem}>
                   <Ionicons name="play-circle-outline" size={20} color="#2F459B" />
                   <Text style={styles.dropdownText}>Recorded Sessions</Text>
                 </TouchableOpacity>
+
+                {/* Conditional sections: Only for non-Onboarding courses */}
+                {course.id !== '1' && (
+                  <>
+                    <TouchableOpacity style={styles.dropdownItem}>
+                      <Ionicons name="bulb-outline" size={20} color="#2F459B" />
+                      <Text style={styles.dropdownText}>Quiz</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.dropdownItem}>
+                      <Ionicons name="share-outline" size={20} color="#2F459B" />
+                      <Text style={styles.dropdownText}>Online Session Link</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -131,14 +157,8 @@ export default function CoursesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
-  modalOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  clickableOverlay: {
-    flex: 1,
-  },
+  modalOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.5)' },
+  clickableOverlay: { flex: 1 },
   header: { 
     backgroundColor: '#0D2A94', 
     height: 60, 
@@ -153,15 +173,28 @@ const styles = StyleSheet.create({
   cardContainer: { marginBottom: 15 },
   courseCard: { backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', elevation: 3 },
   imageSection: { height: 120, backgroundColor: '#F2F4F7', justifyContent: 'center', alignItems: 'center' },
-  progressBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: 'white', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 },
-  progressText: { fontSize: 10, fontWeight: 'bold' },
+  progressBadge: { 
+    position: 'absolute', 
+    top: 10, 
+    left: 10, 
+    backgroundColor: 'white', 
+    borderRadius: 12, 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEE'
+  },
+  progressCircle: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, marginRight: 5 },
+  progressText: { fontSize: 10, fontWeight: 'bold', color: '#555' },
   infoSection: { flexDirection: 'row', alignItems: 'center', padding: 15 },
   textContainer: { flex: 1 },
   courseTitleText: { fontSize: 15, fontWeight: 'bold', color: '#333' },
   instructorText: { fontSize: 12, color: '#7F8C8D' },
   dropdownContent: { backgroundColor: '#F0F2F8', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, padding: 10 },
   dropdownItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15 },
-  dropdownText: { marginLeft: 10, color: '#2F459B', fontWeight: '500' },
+  dropdownText: { marginLeft: 10, color: '#2F459B', fontWeight: '500', textDecorationLine: 'underline' },
   bottomNav: { 
     position: 'absolute', 
     bottom: 0, 

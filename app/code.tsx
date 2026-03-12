@@ -20,15 +20,17 @@ const headerBg = require('../assets/images/llpt.jpg');
 export default function EnrollmentCodeScreen() {
     const router = useRouter();
     const [code, setCode] = useState(['', '', '', '', '', '']);
-    
     const inputs = useRef<TextInput[]>([]);
 
+    const isCodeComplete = code.every(digit => digit !== '');
+
     const handleTextChange = (text: string, index: number) => {
+        const cleanText = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
         const newCode = [...code];
-        newCode[index] = text;
+        newCode[index] = cleanText;
         setCode(newCode);
 
-        if (text && index < 5) {
+        if (cleanText && index < 5) {
             inputs.current[index + 1]?.focus();
         }
     };
@@ -62,17 +64,25 @@ export default function EnrollmentCodeScreen() {
                         
                         <View style={styles.codeContainer}>
                             {code.map((digit, index) => (
-                                <View key={index} style={styles.codeBox}>
+                                <View 
+                                    key={index} 
+                                    style={[
+                                        styles.codeBox, 
+                                        { borderColor: digit ? '#0D2A94' : '#BDC3C7' }
+                                    ]}
+                                >
                                     <TextInput
                                         ref={(el) => { if (el) inputs.current[index] = el; }}
                                         style={styles.codeInput}
                                         maxLength={1}
-                                        keyboardType="number-pad"
+                                        keyboardType="default"
+                                        autoCapitalize="characters"
                                         onChangeText={(text) => handleTextChange(text, index)}
                                         onKeyPress={(e) => handleKeyPress(e, index)}
                                         value={digit}
                                         placeholder="•"
-                                        placeholderTextColor="#0D2A94"
+                                        placeholderTextColor="#BDC3C7"
+                                        selectionColor="#0D2A94"
                                     />
                                 </View>
                             ))}
@@ -87,10 +97,15 @@ export default function EnrollmentCodeScreen() {
                     </View>
 
                     <TouchableOpacity 
-                        style={styles.continueBtn} 
-                        onPress={() => router.push('/succes')}
+                        style={[
+                            styles.continueBtn, 
+                            { opacity: isCodeComplete ? 1 : 0.6 }
+                        ]} 
+                        onPress={() => isCodeComplete && router.push('/profilesetup')}
+                        activeOpacity={0.8}
                     >
                         <Text style={styles.continueText}>Continue</Text>
+                        <Ionicons name="chevron-forward" size={18} color="white" style={{marginLeft: 5}} />
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
@@ -101,8 +116,22 @@ export default function EnrollmentCodeScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'white' },
     header: { width: '100%', height: 200 },
-    headerOverlay: { flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
-    backBtn: { marginTop: 20, marginLeft: 20, backgroundColor: 'white', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+    headerOverlay: { flex: 1, backgroundColor: 'rgba(13, 42, 148, 0.1)' },
+    backBtn: { 
+        marginTop: 20, 
+        marginLeft: 20, 
+        backgroundColor: 'white', 
+        width: 40, 
+        height: 40, 
+        borderRadius: 20, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3
+    },
     content: { flex: 1, paddingHorizontal: 30, alignItems: 'center', marginTop: 30 },
     title: { fontSize: 24, fontWeight: 'bold', color: '#0D2A94', marginBottom: 10 },
     subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 40 },
@@ -112,23 +141,32 @@ const styles = StyleSheet.create({
     codeBox: {
         width: (width - 100) / 6,
         height: 55,
-        borderWidth: 1,
-        borderColor: '#000',
-        borderRadius: 8,
+        borderWidth: 2,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#F9FAFB'
     },
-    codeInput: { fontSize: 20, fontWeight: 'bold', color: '#0D2A94', textAlign: 'center', width: '100%' },
+    codeInput: { 
+        fontSize: 22, 
+        fontWeight: 'bold', 
+        color: '#0D2A94', 
+        textAlign: 'center', 
+        width: '100%' 
+    },
     hintContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
     hintText: { fontSize: 11, color: '#666', marginLeft: 5, fontStyle: 'italic' },
     continueBtn: { 
         backgroundColor: '#0D2A94', 
         width: '100%', 
         padding: 16, 
-        borderRadius: 8, 
+        borderRadius: 12, 
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         position: 'absolute',
-        bottom: 40
+        bottom: 40,
+        elevation: 3
     },
     continueText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 });

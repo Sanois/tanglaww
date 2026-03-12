@@ -19,7 +19,6 @@ const { width } = Dimensions.get('window');
 
 export default function Homepage() {
   const router = useRouter();
-  
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   return (
@@ -33,7 +32,6 @@ export default function Homepage() {
       >
         <View style={styles.modalOverlay}>
           <HamburgerMenu onClose={() => setIsMenuVisible(false)} />
-          
           <TouchableWithoutFeedback onPress={() => setIsMenuVisible(false)}>
             <View style={styles.clickableOverlay} />
           </TouchableWithoutFeedback>
@@ -49,11 +47,9 @@ export default function Homepage() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Dashboard</Text>
+
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={{ marginRight: 15 }}>
-            <Ionicons name="search" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/notification')}>
             <Ionicons name="notifications-outline" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -157,7 +153,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? 10 : 0,
   },
   headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  headerIcons: { flexDirection: 'row' },
+  headerIcons: { flexDirection: 'row', alignItems: 'center' },
   scrollContent: { padding: 20, paddingBottom: 100 },
   welcomeText: { fontSize: 22, fontWeight: 'bold', color: '#0D2A94', marginBottom: 20 },
   carouselContainer: {

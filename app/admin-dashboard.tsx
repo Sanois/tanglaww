@@ -20,16 +20,14 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Dashboard</Text>
                 <View style={styles.headerIcons}>
-                    <TouchableOpacity style={{ marginRight: 15 }}>
-                        <Ionicons name="search-outline" size={24} color="black" />
-                    </TouchableOpacity>
-                    <TouchableOpacity>
+                    {/* Search removed, added navigation to the new notification screen */}
+                    <TouchableOpacity onPress={() => router.push("/admin-notification")}>
                         <Ionicons name="notifications-outline" size={24} color="black" />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            <ScrollView style={styles.scrollContent}>
+            <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.welcomeText}>Welcome Back!</Text>
 
                 <View style={styles.heroCard}>
@@ -51,7 +49,7 @@ export default function AdminDashboard() {
                     <View style={styles.cardHeader}>
                         <Ionicons name="megaphone-outline" size={20} color="#2F459B" />
                         <Text style={styles.cardTitle}>Announcements</Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => router.push("/admin-notification")}>
                             <Ionicons name="pencil-outline" size={18} color="#555" />
                         </TouchableOpacity>
                     </View>
@@ -94,34 +92,22 @@ export default function AdminDashboard() {
             </ScrollView>
 
             <View style={styles.tabBar}>
-                <TouchableOpacity 
-                    style={styles.tabItem}
-                    onPress={() => router.push("/admin-dashboard")}
-                >
+                <TouchableOpacity style={styles.tabItem} onPress={() => router.push("/admin-dashboard")}>
                     <Ionicons name="home" size={24} color="#FFD75E" />
                     <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Home</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.tabItem} 
-                    onPress={() => router.push("/admin-approval")}
-                >
+                <TouchableOpacity style={styles.tabItem} onPress={() => router.push("/admin-approval")}>
                     <Ionicons name="person-outline" size={24} color="#2F459B" />
                     <Text style={styles.tabLabel}>Approvals</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.tabItem}
-                    onPress={() => router.push("/admin-calendar")}
-                >
+                <TouchableOpacity style={styles.tabItem} onPress={() => router.push("/admin-calendar")}>
                     <Ionicons name="calendar-outline" size={24} color="#2F459B" />
                     <Text style={styles.tabLabel}>Calendar</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.tabItem}
-                    onPress={() => router.push("/admin-courses")}
-                >
+                <TouchableOpacity style={styles.tabItem} onPress={() => router.push("/admin-courses")}>
                     <Ionicons name="school-outline" size={24} color="#2F459B" />
                     <Text style={styles.tabLabel}>Courses</Text>
                 </TouchableOpacity>
@@ -156,13 +142,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowOffset: { width: 0, height: 2 },
     },
-    affirmationText: {
-        fontSize: 14,
-        fontStyle: 'italic',
-        color: "#555",
-        marginTop: 5,
-        textAlign: 'center'
-    },
+    affirmationText: { fontSize: 14, fontStyle: 'italic', color: "#555", marginTop: 5, textAlign: 'center' },
     heroCard: {
         backgroundColor: "white",
         borderRadius: 15,
