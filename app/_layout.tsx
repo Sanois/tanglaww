@@ -1,23 +1,14 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
+import { AdminProvider } from "../context/AdminContext";
 
 export default function RootLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        animation: 'fade', 
-      }}
-    >
-
-      <Stack.Screen name="index" />
-      
-
-      <Stack.Screen name="welcome" />
-      <Stack.Screen name="login" />
-      
-
-      <Stack.Screen name="signin" />
-      <Stack.Screen name="enroll" />
-    </Stack>
-  );
+    return (
+        <AdminProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="admin/audit" />
+                <Stack.Screen name="admin/registry" />
+            </Stack>
+        </AdminProvider>
+    );
 }

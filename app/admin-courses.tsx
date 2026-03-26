@@ -9,10 +9,12 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import AdminHamburger from "./admin-hamburger";
 
 export default function AdminCourses() {
     const router = useRouter();
     const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+    const [menuVisible, setMenuVisible] = useState(false);
 
     const toggleExpand = (courseTitle: string) => {
         setExpandedCourse(expandedCourse === courseTitle ? null : courseTitle);
@@ -20,7 +22,6 @@ export default function AdminCourses() {
 
     const CourseCard = ({ title, instructor, isLocked, hasDropdown, progress }: any) => {
         const isExpanded = expandedCourse === title;
-        // Check if this is the onboarding course to limit dropdown items
         const isOnboarding = title.includes("On Boarding");
 
         return (
@@ -68,7 +69,6 @@ export default function AdminCourses() {
 
                 {isExpanded && !isLocked && (
                     <View style={styles.dropdownContent}>
-                        {/* 1. Handouts - Navigation to your materials folder */}
                         <TouchableOpacity 
                             style={styles.dropItem}
                             onPress={() => router.push({
@@ -80,13 +80,11 @@ export default function AdminCourses() {
                             <Text style={styles.dropText}>Handouts</Text>
                         </TouchableOpacity>
 
-                        {/* 2. Recorded Sessions */}
                         <TouchableOpacity style={styles.dropItem}>
                             <Ionicons name="videocam-outline" size={20} color="#2F459B" />
                             <Text style={styles.dropText}>Recorded Sessions</Text>
                         </TouchableOpacity>
 
-                        {/* Conditional Items: Only show if NOT Onboarding */}
                         {!isOnboarding && (
                             <>
                                 <TouchableOpacity style={styles.dropItem}>
@@ -100,7 +98,6 @@ export default function AdminCourses() {
                             </>
                         )}
 
-                        {/* Admin-only "Add" action */}
                         <TouchableOpacity style={[styles.dropItem, { borderBottomWidth: 0 }]}>
                             <Ionicons name="add-circle-outline" size={20} color="#BDC3C7" />
                             <Text style={[styles.dropText, { color: "#BDC3C7" }]}>Add new section</Text>
@@ -114,11 +111,16 @@ export default function AdminCourses() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(true)}>
                     <Ionicons name="menu" size={28} color="black" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Courses</Text>
             </View>
+
+            <AdminHamburger 
+                visible={menuVisible} 
+                onClose={() => setMenuVisible(false)} 
+            />
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <CourseCard 
@@ -147,7 +149,6 @@ export default function AdminCourses() {
                 />
             </ScrollView>
 
-            {/* Bottom Tab Bar remains the same */}
             <View style={styles.tabBar}>
                 <TouchableOpacity style={styles.tabItem} onPress={() => router.push("/admin-dashboard")}>
                     <Ionicons name="home-outline" size={24} color="#2F459B" />

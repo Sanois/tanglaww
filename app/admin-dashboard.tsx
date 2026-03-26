@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
     SafeAreaView,
     ScrollView,
@@ -8,19 +9,20 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import AdminHamburger from "./admin-hamburger";
 
 export default function AdminDashboard() {
     const router = useRouter();
+    const [isMenuVisible, setIsMenuVisible] = useState(false);
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
                     <Ionicons name="menu" size={28} color="black" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Dashboard</Text>
                 <View style={styles.headerIcons}>
-                    {/* Search removed, added navigation to the new notification screen */}
                     <TouchableOpacity onPress={() => router.push("/admin-notification")}>
                         <Ionicons name="notifications-outline" size={24} color="black" />
                     </TouchableOpacity>
@@ -112,6 +114,11 @@ export default function AdminDashboard() {
                     <Text style={styles.tabLabel}>Courses</Text>
                 </TouchableOpacity>
             </View>
+
+            <AdminHamburger 
+                visible={isMenuVisible} 
+                onClose={() => setIsMenuVisible(false)} 
+            />
         </SafeAreaView>
     );
 }

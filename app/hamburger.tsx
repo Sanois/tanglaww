@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   Dimensions,
+  Image, // Import Image component
   SafeAreaView,
   StyleSheet,
   Text,
@@ -12,6 +13,8 @@ import {
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75; 
+
+const tanglawGraphic = require('../assets/images/tangalawhd.png');
 
 interface HamburgerProps {
   onClose: () => void;
@@ -32,6 +35,16 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
   return (
     <SafeAreaView style={styles.drawerContainer}>
       <View style={styles.drawerHeader}>
+        {/* BACKGROUND GRAPHIC (tanglawhd.png) */}
+        <View style={styles.headerGraphic}>
+          <Image 
+            source={tanglawGraphic} 
+            style={styles.backgroundImage}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* HEADER CONTENT */}
         <View style={styles.avatarCircle}>
           <Ionicons name="person-outline" size={40} color="#0D2A94" />
         </View>
@@ -39,10 +52,6 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
           <Text style={styles.userName}>JOHN DOE D. PILI</Text>
           <Text style={styles.userRole}>Bachelor of Elementary Education</Text>
           <Text style={styles.userEmail}>johndoejacat10@gmail.com</Text>
-        </View>
-        
-        <View style={styles.headerGraphic}>
-             <Ionicons name="at-circle" size={150} color="rgba(255,255,255,0.15)" />
         </View>
       </View>
 
@@ -110,10 +119,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     marginBottom: 15,
-    zIndex: 2,
+    zIndex: 2, // Ensure content is above the image
   },
   headerTextContent: {
-    zIndex: 2, 
+    zIndex: 2, // Ensure content is above the image
   },
   userName: { color: '#FFB800', fontSize: 18, fontWeight: 'bold' },
   userRole: { color: 'white', fontSize: 13, marginTop: 2 },
@@ -122,7 +131,12 @@ const styles = StyleSheet.create({
     position: 'absolute', 
     right: -30, 
     bottom: -30,
-    zIndex: 1 
+    zIndex: 1, // Place behind text/avatar
+  },
+  backgroundImage: {
+    width: 150,
+    height: 150,
+    opacity: 0.15, 
   },
   menuItems: { flex: 1, paddingVertical: 10 },
   menuItem: { 

@@ -15,7 +15,7 @@ import {
 
 const { width } = Dimensions.get("window");
 
-const headerBg = require("../assets/images/llpt.jpg");
+const headerBg = require("../assets/images/header.png");
 
 interface dataTypes {
   privacyAgreement: boolean | null; //for step1 - data priv notice
@@ -519,7 +519,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>First Name: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Given Name"
+                placeholder=" Juan"
                 placeholderTextColor="#666"
                 value={dataTypes.firstName}
                 onChangeText={(val) => setField("firstName", val)}
@@ -527,7 +527,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>Middle Name:</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Middle Name"
+                placeholder="Santos"
                 placeholderTextColor="#666"
                 value={dataTypes.middleName}
                 onChangeText={(val) => setField("middleName", val)}
@@ -535,7 +535,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>Last Name: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Last Name"
+                placeholder="Dela Cruz"
                 placeholderTextColor="#666"
                 value={dataTypes.lastName}
                 onChangeText={(val) => setField("lastName", val)}
@@ -543,7 +543,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>Email Address: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="email@example.com"
+                placeholder="delacruzjuan@example.com"
                 placeholderTextColor="#666"
                 value={dataTypes.email}
                 onChangeText={(val) => setField("email", val)}
@@ -559,7 +559,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>Last School Attended: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="University Name"
+                placeholder="e.g. University of Santo Tomas"
                 placeholderTextColor="#666"
                 value={dataTypes.lastSchool}
                 onChangeText={(val) => setField("lastSchool", val)}
@@ -567,7 +567,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>Province: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Province"
+                placeholder="Metro Manila"
                 placeholderTextColor="#666"
                 value={dataTypes.province}
                 onChangeText={(val) => setField("province", val)}

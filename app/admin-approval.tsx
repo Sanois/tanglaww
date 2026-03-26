@@ -1,16 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import AdminHamburger from "./admin-hamburger";
 
 export default function AdminApproval() {
   const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const ApprovalCard = ({ name, course, id }: { name: string; course: string; id: string }) => (
     <TouchableOpacity 
@@ -31,11 +34,16 @@ export default function AdminApproval() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setMenuVisible(true)}>
           <Ionicons name="menu" size={28} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Approvals</Text>
       </View>
+
+      <AdminHamburger 
+        visible={menuVisible} 
+        onClose={() => setMenuVisible(false)} 
+      />
 
       <ScrollView style={styles.content}>
         <Text style={styles.sectionTitle}>Pending</Text>
@@ -82,8 +90,8 @@ export default function AdminApproval() {
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="person" size={24} color="#FFD75E" />
-          <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Approvals</Text>
+          <Ionicons name="person" size={24} color="#2F459B" />
+          <Text style={[styles.tabLabel, { color: "#2F459B", fontWeight: 'bold' }]}>Approvals</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 

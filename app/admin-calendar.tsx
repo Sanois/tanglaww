@@ -9,14 +9,16 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
+import AdminHamburger from "./admin-hamburger";
 
 const { width } = Dimensions.get('window');
 
 export default function AdminCalendar() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState("Upcoming");
+    const [menuVisible, setMenuVisible] = useState(false);
     const tabSlideAnim = useRef(new Animated.Value(0)).current;
 
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -35,12 +37,17 @@ export default function AdminCalendar() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setMenuVisible(true)}>
                     <Ionicons name="menu" size={28} color="black" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Calendar</Text>
                 <View style={{ width: 28 }} /> 
             </View>
+
+            <AdminHamburger 
+                visible={menuVisible} 
+                onClose={() => setMenuVisible(false)} 
+            />
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.monthHeader}>
