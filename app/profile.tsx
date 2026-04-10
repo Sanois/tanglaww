@@ -1,7 +1,14 @@
-import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { supabase } from "@/lib/supabase";
 import {
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -9,17 +16,70 @@ import {
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
-} from 'react-native';
-import HamburgerMenu from './hamburger';
+  View,
+} from "react-native";
+import HamburgerMenu from "./hamburger";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [student, setStudent] = useState<any>(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("student")
+      .select(
+        `
+        id,
+        firstName,
+        lastName,
+        middleName,
+        email,
+        profilephotourl,
+        enrollment (
+          curriculum!enrollment_curriculum_id_fkey (curriculumName),
+          specialization!enrollment_specialization_id_fkey (specializationName)
+        )
+      `,
+      )
+      .eq("email", user.email)
+      .single();
+
+    if (error) console.error("Profile fetch error:", error.message);
+    if (data) setStudent(data);
+    setLoading(false);
+  };
+
+  const fullName = student
+    ? `${student.firstName}${student.middleName ? " " + student.middleName + "." : ""} ${student.lastName}`.toUpperCase()
+    : "";
+
+  const curriculum =
+    (student?.enrollment as any)?.[0]?.curriculum?.curriculumName ?? "—";
+  const specialization =
+    (student?.enrollment as any)?.[0]?.specialization?.specializationName ??
+    "—";
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0D2A94" style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      
       <Modal
         animationType="fade"
         transparent={true}
@@ -28,7 +88,7 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <HamburgerMenu onClose={() => setIsMenuVisible(false)} />
-          
+
           <TouchableWithoutFeedback onPress={() => setIsMenuVisible(false)}>
             <View style={styles.clickableOverlay} />
           </TouchableWithoutFeedback>
@@ -39,46 +99,64 @@ export default function ProfileScreen() {
         <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
           <Ionicons name="menu" size={28} color="white" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>Profile</Text>
-        
+
         <TouchableOpacity>
           <MaterialCommunityIcons name="qrcode-scan" size={24} color="white" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.profileCard}>
           <View style={styles.banner}>
-            <TouchableOpacity 
-              style={styles.editIcon} 
-              onPress={() => router.push('/edit-profile')}
+            <TouchableOpacity
+              style={styles.editIcon}
+              onPress={() => router.push("/edit-profile")}
             >
-              <MaterialCommunityIcons name="pencil-box-outline" size={28} color="white" />
+              <MaterialCommunityIcons
+                name="pencil-box-outline"
+                size={28}
+                color="white"
+              />
             </TouchableOpacity>
-            
+
             <View style={styles.bannerGraphic}>
-                <FontAwesome5 name="graduation-cap" size={80} color="rgba(255,255,255,0.2)" />
+              <FontAwesome5
+                name="graduation-cap"
+                size={80}
+                color="rgba(255,255,255,0.2)"
+              />
             </View>
           </View>
 
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
-              <Ionicons name="person-outline" size={60} color="#BDC3C7" />
+              {student?.profilePhotoUrl ? (
+                <Image
+                  source={{ uri: student.profilePhotoUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person-outline" size={60} color="#BDC3C7" />
+              )}
             </View>
           </View>
 
           <View style={styles.userInfoHeader}>
-            <Text style={styles.userName}>JOHN DOE D. PILI</Text>
-            <Text style={styles.userRole}>Bachelor of Elementary Education</Text>
-            <Text style={styles.userEmailSmall}>johndoejacat10@gmail.com</Text>
+            <Text style={styles.userName}>{fullName}</Text>
+            <Text style={styles.userRole}>{curriculum}</Text>
+            <Text style={styles.userEmailSmall}>{student?.email}</Text>
           </View>
 
           <View style={styles.detailsContainer}>
             {[
-              { label: 'Curriculum', value: 'Bachelor of Elementary Education' },
-              { label: 'Email', value: 'johndoejacat10@gmail.com' },
-              { label: 'Contact Number', value: '0912-345-6789' }
+              { label: "Curriculum", value: curriculum },
+              { label: "Email", value: student?.email },
+              { label: "Contact Number", value: "0912-345-6789" },
             ].map((item, index) => (
               <View key={index} style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>{item.label}</Text>
@@ -92,21 +170,30 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/homepage')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.replace("/homepage")}
+        >
           <Ionicons name="home-outline" size={24} color="#2F459B" />
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/courses')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.replace("/courses")}
+        >
           <FontAwesome5 name="graduation-cap" size={20} color="#2F459B" />
           <Text style={styles.navText}>Courses</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/calendar')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.replace("/calendar")}
+        >
           <Ionicons name="calendar-outline" size={24} color="#2F459B" />
           <Text style={styles.navText}>Calendar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="person" size={24} color="#FFB800" />
-          <Text style={[styles.navText, { color: '#FFB800' }]}>Profile</Text>
+          <Text style={[styles.navText, { color: "#FFB800" }]}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -114,52 +201,78 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
   modalOverlay: {
     flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   clickableOverlay: {
     flex: 1,
   },
-  header: { 
-    backgroundColor: '#0D2A94', 
-    height: 60, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20 
+  header: {
+    backgroundColor: "#0D2A94",
+    height: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
   },
-  headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+  headerTitle: { color: "white", fontSize: 20, fontWeight: "bold" },
   scrollContent: { padding: 20, paddingBottom: 100 },
-  profileCard: { backgroundColor: 'white', borderRadius: 20, overflow: 'hidden', elevation: 5 },
-  banner: { backgroundColor: '#0D2A94', height: 120, position: 'relative' },
-  bannerGraphic: { position: 'absolute', right: -10, bottom: -10 },
-  editIcon: { position: 'absolute', top: 15, right: 15, zIndex: 1 },
-  avatarContainer: { alignItems: 'center', marginTop: -50 },
-  avatarCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'white', borderWidth: 2, borderColor: '#0D2A94', justifyContent: 'center', alignItems: 'center' },
-  userInfoHeader: { alignItems: 'center', paddingVertical: 15 },
-  userName: { fontSize: 20, fontWeight: 'bold', color: '#0D2A94' },
-  userRole: { fontSize: 13, color: '#333', fontWeight: '600' },
-  userEmailSmall: { fontSize: 11, color: '#7F8C8D' },
+  profileCard: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    overflow: "hidden",
+    elevation: 5,
+  },
+  banner: { backgroundColor: "#0D2A94", height: 120, position: "relative" },
+  bannerGraphic: { position: "absolute", right: -10, bottom: -10 },
+  editIcon: { position: "absolute", top: 15, right: 15, zIndex: 1 },
+  avatarContainer: { alignItems: "center", marginTop: -50 },
+  avatarCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#0D2A94",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarImage: { width: 100, height: 100, borderRadius: 50 },
+  userInfoHeader: { alignItems: "center", paddingVertical: 15 },
+  userName: { fontSize: 20, fontWeight: "bold", color: "#0D2A94" },
+  userRole: { fontSize: 13, color: "#333", fontWeight: "600" },
+  userEmailSmall: { fontSize: 11, color: "#7F8C8D" },
   detailsContainer: { paddingHorizontal: 20, paddingBottom: 30 },
   inputGroup: { marginBottom: 15 },
-  inputLabel: { fontSize: 14, fontWeight: 'bold', color: '#0D2A94', marginBottom: 8 },
-  inputBox: { borderWidth: 1, borderColor: '#BDC3C7', borderRadius: 8, padding: 12, backgroundColor: '#FDFDFD' },
-  inputText: { fontSize: 14, color: '#555' },
-  bottomNav: { 
-    position: 'absolute', 
-    bottom: 0, 
-    width: '100%', 
-    height: 70, 
-    backgroundColor: 'white', 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    alignItems: 'center', 
-    borderTopWidth: 1, 
-    borderTopColor: '#EEE' 
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#0D2A94",
+    marginBottom: 8,
   },
-  navItem: { alignItems: 'center' },
-  navText: { fontSize: 12, marginTop: 4, color: '#2F459B' },
+  inputBox: {
+    borderWidth: 1,
+    borderColor: "#BDC3C7",
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: "#FDFDFD",
+  },
+  inputText: { fontSize: 14, color: "#555" },
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 70,
+    backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+  },
+  navItem: { alignItems: "center" },
+  navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
 });
