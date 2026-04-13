@@ -22,7 +22,6 @@ import {
     uploadHandout,
 } from "../../services/materialService";
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatBytes = (bytes: number | null) => {
   if (!bytes) return "—";
   if (bytes < 1024) return `${bytes} B`;
@@ -49,8 +48,6 @@ const fileIconColor = (type: string) => {
   return "#95A5A6";
 };
 
-// ─── In-App Viewer ─────────────────────────────────────────────────────────────
-// Uses Google Docs viewer so PDF and Word both render without any extra library.
 function InAppViewer({
   material,
   onClose,
@@ -93,7 +90,6 @@ function InAppViewer({
   );
 }
 
-// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function HandoutScreen() {
   const router = useRouter();
   const { moduleId: moduleIdParam, courseTitle = "Course" } =
@@ -165,7 +161,6 @@ export default function HandoutScreen() {
         return;
       }
 
-      // Share sheet appears — user can tap "Save to Downloads", "Open with", etc.
       await Sharing.shareAsync(result.uri!, {
         mimeType:
           item.fileType === "pdf"
@@ -182,7 +177,6 @@ export default function HandoutScreen() {
     }
   };
 
-  // If a document is selected, show the viewer full-screen
   if (viewingMaterial) {
     return (
       <InAppViewer

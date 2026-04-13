@@ -80,7 +80,7 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/audit")}
+                  onPress={() => navigateTo("/admin/audit")}
                 >
                   <Ionicons
                     name="shield-checkmark-outline"
@@ -97,7 +97,7 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/registry")}
+                  onPress={() => navigateTo("/admin/registry")}
                 >
                   <Ionicons name="people-outline" size={20} color="#2F459B" />
                   <Text style={styles.navText}>Student Registry</Text>
@@ -107,7 +107,7 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/admin-edit-about")}
+                  onPress={() => navigateTo("/admin/edit-about")}
                 >
                   <Ionicons
                     name="information-circle-outline"
@@ -121,7 +121,7 @@ export default function AdminHamburger({
               <View style={styles.bottomGroup}>
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/admin-edit-help")}
+                  onPress={() => navigateTo("/admin/edit-help")}
                 >
                   <Ionicons
                     name="help-circle-outline"
@@ -133,7 +133,7 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/admin-edit-policies")}
+                  onPress={() => navigateTo("/admin/edit-policies")}
                 >
                   <Ionicons
                     name="document-text-outline"

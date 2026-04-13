@@ -160,7 +160,6 @@ export default function SignInScreen() {
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.footerLabel}>For Instructors</Text>
-            {/* Navigates to the Admin Sign In page */}
             <TouchableOpacity
               onPress={() => router.push("/admin/signin" as any)}
             >

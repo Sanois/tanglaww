@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Dimensions,
-  Image, // Import Image component
+  Image,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -81,7 +81,6 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
   return (
     <SafeAreaView style={styles.drawerContainer}>
       <View style={styles.drawerHeader}>
-        {/* BACKGROUND GRAPHIC (tanglawhd.png) */}
         <View style={styles.headerGraphic}>
           <Image
             source={tanglawGraphic}
@@ -90,7 +89,6 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
           />
         </View>
 
-        {/* HEADER CONTENT */}
         <View style={styles.avatarCircle}>
           <Ionicons name="person-outline" size={40} color="#0D2A94" />
         </View>
@@ -199,10 +197,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
-    zIndex: 2, // Ensure content is above the image
+    zIndex: 2,
   },
   headerTextContent: {
-    zIndex: 2, // Ensure content is above the image
+    zIndex: 2,
   },
   userName: { color: "#FFB800", fontSize: 18, fontWeight: "bold" },
   userRole: { color: "white", fontSize: 13, marginTop: 2 },
@@ -211,7 +209,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -30,
     bottom: -30,
-    zIndex: 1, // Place behind text/avatar
+    zIndex: 1,
   },
   backgroundImage: {
     width: 150,

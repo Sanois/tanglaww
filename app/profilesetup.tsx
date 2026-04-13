@@ -20,9 +20,10 @@ import {
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
-  const { email, studentId } = useLocalSearchParams<{
+  const { email, studentId, activationCodeId } = useLocalSearchParams<{
     email: string;
     studentId: string;
+    activationCodeId: string;
   }>();
 
   const [firstName, setFirstName] = useState("");
@@ -149,7 +150,6 @@ export default function ProfileSetupScreen() {
     setLoading(true);
 
     try {
-      // 1. Create Supabase Auth user
       const { data: signUpData, error: signUpError } =
         await supabase.auth.signUp({
           email: email,
@@ -162,20 +162,28 @@ export default function ProfileSetupScreen() {
       if (signUpError) throw new Error(signUpError.message);
       if (!signUpData.user) throw new Error("No user returned from signup.");
 
-      // 2. Upload photo if selected
       const photoUrl = await uploadPhoto();
 
-      // 3. Update student row — save auth_id and photo URL
       const { error: updateError } = await supabase
         .from("student")
         .update({
-          auth_id: signUpData.user.id, // ← critical: links student to auth user
+          auth_id: signUpData.user.id,
+          isAccountSetup: true,
           ...(photoUrl ? { profilephotourl: photoUrl } : {}),
         })
         .eq("id", studentId);
 
       if (updateError)
         throw new Error("Failed to link account: " + updateError.message);
+
+      if (activationCodeId) {
+        const { error: codeError } = await supabase
+          .from("activation_codes")
+          .update({ is_used: true })
+          .eq("id", activationCodeId);
+
+        if (codeError) console.error("Code mark error:", codeError.message);
+      }
 
       router.replace("/succes");
     } catch (err: any) {
@@ -239,31 +247,11 @@ export default function ProfileSetupScreen() {
               <Text style={styles.label}>Full Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Juan Dela Cruz"
-                placeholderTextColor="#999"
                 editable={false}
                 value={firstName}
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Contact Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0912 345 6789"
-                placeholderTextColor="#999"
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Major / Specialization</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. BEED, BSEED - English"
-                placeholderTextColor="#999"
-              />
-            </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Create Password:*</Text>
               <View style={styles.inputWrapper}>
@@ -355,13 +343,6 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
   scrollContent: { padding: 30, paddingBottom: 50 },
-  stepContainer: { marginBottom: 10 },
-  stepText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#FFB800",
-    textTransform: "uppercase",
-  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
@@ -401,7 +382,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontWeight: "500",
   },
-
+  avatarImage: { width: 100, height: 100, borderRadius: 50 },
   form: { width: "100%" },
   inputGroup: { marginBottom: 20 },
   label: {
@@ -410,7 +391,15 @@ const styles = StyleSheet.create({
     color: "#0D2A94",
     marginBottom: 8,
   },
-  avatarImage: { width: 100, height: 100, borderRadius: 50 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#DCDFE3",
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    backgroundColor: "#F9FAFB",
+    color: "#333",
+  },
   inputInner: { flex: 1, fontSize: 16, color: "#333" },
   inputWrapper: {
     flexDirection: "row",
@@ -421,15 +410,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     height: 50,
     backgroundColor: "#F9FAFB",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#DCDFE3",
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    backgroundColor: "#F9FAFB",
-    color: "#333",
   },
   errorBanner: {
     flexDirection: "row",
@@ -451,10 +431,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 20,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   saveText: { color: "white", fontWeight: "bold", fontSize: 16 },
 });

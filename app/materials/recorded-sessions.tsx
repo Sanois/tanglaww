@@ -162,7 +162,6 @@ function AddSessionModal({
   );
 }
 
-// ─── Player Modal ──────────────────────────────────────────────────────────────
 function PlayerModal({
   session,
   onClose,
@@ -222,7 +221,6 @@ function PlayerModal({
   );
 }
 
-// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function RecordedSessionsScreen() {
   const router = useRouter();
   const { moduleId: moduleIdParam, courseTitle = "Course" } =

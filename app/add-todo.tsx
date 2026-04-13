@@ -56,7 +56,7 @@ export default function AddTodoScreen() {
 
       if (error) throw new Error(error.message);
 
-      Alert.alert("Saved!", "Todo added successfully.");
+      Alert.alert("Saved!", "Task added successfully.");
       router.back();
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Something went wrong.");

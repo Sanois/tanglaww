@@ -24,10 +24,8 @@ export const adminService = {
                     verificationNotes
                 )`);
     if (error) {
-      console.error("getAuditRequests error:", error.message);
       return [];
     }
-    console.log("Raw audit data:", JSON.stringify(data, null, 2));
     return data ?? [];
   },
 
@@ -41,7 +39,6 @@ export const adminService = {
                 majorshipTaken
             `);
     if (error) {
-      console.error("getStudentRegistry error:", error.message);
       return [];
     }
     return data ?? [];
@@ -57,7 +54,6 @@ export const adminService = {
       .eq("verification_id", id);
 
     if (error) {
-      console.error("processAudit error:", error.message);
       return false;
     }
     return true;

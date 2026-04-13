@@ -11,6 +11,9 @@ export default function RootLayout() {
       <Stack.Screen name="approval" />
       <Stack.Screen name="hamburger" />
       <Stack.Screen name="registrant/[id]" />
+      <Stack.Screen name="todo" />
+      <Stack.Screen name="add-event" />
+      <Stack.Screen name="notification" />
     </Stack>
   );
 }

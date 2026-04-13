@@ -53,7 +53,7 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity onPress={() => router.push("/code")}>
-            <Text style={styles.enrollCodeLink}>Check Registration Status</Text>
+            <Text style={styles.enrollCodeLink}>Use Enrollment Code</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </View>

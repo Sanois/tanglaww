@@ -33,10 +33,10 @@ export default function Homepage() {
 
   const fetchAnnouncements = useCallback(async () => {
     const { data } = await supabase
-      .from("announcement")
+      .from("announcements")
       .select("*")
-      .order("createdAt", { ascending: false })
-      .limit(3);
+      .order("created_at", { ascending: false })
+      .limit(1);
     if (data) setAnnouncements(data);
   }, []);
 

@@ -40,7 +40,6 @@ export default function CoursesScreen() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch courses + modules ──────────────────────────────────────────────────
   useEffect(() => {
     const fetchCourses = async () => {
       const { data, error } = await supabase
@@ -87,7 +86,6 @@ export default function CoursesScreen() {
     });
   };
 
-  // ── Progress placeholder (wire to material_progress later) ──────────────────
   const getProgress = (courseId: number) => 0;
 
   return (
@@ -106,7 +104,6 @@ export default function CoursesScreen() {
         </View>
       </Modal>
 
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
@@ -119,7 +116,6 @@ export default function CoursesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Course list */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#2F459B" />
@@ -185,7 +181,6 @@ export default function CoursesScreen() {
 
                 {isExpanded && !isLocked && (
                   <View style={styles.dropdownContent}>
-                    {/* Handouts */}
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => navigateTo("handout", course)}
@@ -198,7 +193,6 @@ export default function CoursesScreen() {
                       <Text style={styles.dropdownText}>Handouts</Text>
                     </TouchableOpacity>
 
-                    {/* Recorded Sessions */}
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => navigateTo("recorded-sessions", course)}
@@ -211,7 +205,6 @@ export default function CoursesScreen() {
                       <Text style={styles.dropdownText}>Recorded Sessions</Text>
                     </TouchableOpacity>
 
-                    {/* Non-onboarding only */}
                     {!isOnboarding && (
                       <>
                         <TouchableOpacity style={styles.dropdownItem}>
@@ -242,7 +235,6 @@ export default function CoursesScreen() {
         </ScrollView>
       )}
 
-      {/* Bottom Nav */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navItem}

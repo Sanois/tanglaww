@@ -58,7 +58,7 @@ export default function CalendarScreen() {
       return;
     }
     const { data: eventData } = await supabase
-      .from("calendar_event")
+      .from("calendar_events")
       .select("*")
       .order("event_date", { ascending: true });
 
@@ -475,27 +475,33 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 20,
-  },
-  dayLabel: {
-    flexBasis: "14.2%",
-    maxWidth: "14.2%",
-    textAlign: "center",
-    color: "#BDC3C7",
-    fontSize: 12,
+    paddingHorizontal: 15,
     marginBottom: 10,
   },
+  dayLabel: {
+    width: (width - 30) / 7,
+    textAlign: "center",
+    color: "#BDC3C7",
+    fontSize: 13,
+    marginBottom: 15,
+    fontWeight: "500",
+  },
   dateBox: {
-    flexBasis: "14.2%",
-    maxWidth: "14.2%",
-    height: 40,
+    width: (width - 30) / 7,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 5,
   },
   dateText: { color: "#2F459B", fontSize: 14 },
-  selectedDate: { backgroundColor: "#FFB800", borderRadius: 20 },
-  selectedDateText: { color: "white", fontWeight: "bold" },
-
+  selectedDate: {
+    backgroundColor: "#FFD75E",
+    borderRadius: 25,
+  },
+  selectedDateText: {
+    fontWeight: "bold",
+    color: "#2F459B",
+  },
   dotRow: { flexDirection: "row", gap: 2, marginTop: 2 },
   calDot: { width: 5, height: 5, borderRadius: 3 },
 

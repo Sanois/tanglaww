@@ -1,6 +1,7 @@
+import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -14,6 +15,20 @@ import AdminHamburger from "./hamburger";
 export default function AdminDashboard() {
   const router = useRouter();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
+  const fetchAnnouncements = useCallback(async () => {
+    const { data } = await supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (data) setAnnouncements(data);
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -60,11 +75,30 @@ export default function AdminDashboard() {
               <Ionicons name="pencil-outline" size={18} color="#555" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.cardBody}>
-            March 2026 LET Review: Enrollment is Open! Join our LET Onboarding
-            now. You can secure your slot with an initial payment of just
-            P1,000.
-          </Text>
+          {announcements.length === 0 ? (
+            <Text style={styles.cardBody}>No announcements yet.</Text>
+          ) : (
+            announcements.map((a, i) => (
+              <View
+                key={a.id}
+                style={
+                  i > 0
+                    ? {
+                        marginTop: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "#eee",
+                        paddingTop: 8,
+                      }
+                    : {}
+                }
+              >
+                <Text style={[styles.cardBody, { fontWeight: "bold" }]}>
+                  {a.title}
+                </Text>
+                <Text style={styles.cardBody}>{a.content}</Text>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.affirmationCard}>

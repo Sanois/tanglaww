@@ -31,7 +31,6 @@ export async function getMaterialsByModule(
     .order("uploadedAt", { ascending: false });
 
   if (error) {
-    console.error("getMaterialsByModule:", error.message);
     return [];
   }
   return (data ?? []) as LearningMaterial[];
@@ -57,13 +56,8 @@ export async function uploadHandout(
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
     const storagePath = `module_${moduleId}/${Date.now()}_${file.name}`;
 
-    console.log("Reading file...");
-
-    // Use new expo-file-system/next API
     const fileObj = new File(file.uri);
     const base64 = await fileObj.base64();
-
-    console.log("File read, uploading...");
 
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -79,8 +73,6 @@ export async function uploadHandout(
       });
 
     if (storageError) throw new Error(storageError.message);
-
-    console.log("Upload success, inserting DB row...");
 
     const { data: urlData } = supabase.storage
       .from("learning-materials")
@@ -99,11 +91,8 @@ export async function uploadHandout(
       uploadedAt: new Date().toISOString(),
     });
     if (dbError) throw new Error(dbError.message);
-
-    console.log("DB insert success");
     return { success: true };
   } catch (err: any) {
-    console.error("uploadHandout error:", err.message);
     return { success: false, error: err.message };
   }
 }
@@ -156,8 +145,6 @@ export async function downloadMaterial(
   material: LearningMaterial,
 ): Promise<{ success: boolean; uri?: string; error?: string }> {
   try {
-    console.log("Downloading file...", material.fileUrl);
-
     const { data, error } = await supabase.storage
       .from("learning-materials")
       .download(material.storagePath!);
@@ -165,7 +152,6 @@ export async function downloadMaterial(
     if (error) throw new Error(error.message);
     if (!data) throw new Error("No data returned");
 
-    // Use FileReader to convert Blob to base64
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -176,16 +162,11 @@ export async function downloadMaterial(
       reader.readAsDataURL(data);
     });
 
-    // Sanitize filename — remove special characters that break Android paths
     const safeTitle = material.title
       .replace(/[^a-zA-Z0-9._-]/g, "_")
       .replace(/_+/g, "_");
 
-    // Use Paths.document.uri instead of Paths.document directly
     const docDir = Paths.document.uri ?? Paths.document.toString();
-    console.log("Paths.document:", Paths.document);
-    console.log("Paths.document type:", typeof Paths.document);
-    console.log("Paths.document keys:", Object.keys(Paths.document as any));
     const localFile = new File(docDir + safeTitle);
 
     const binaryString = atob(base64);
@@ -198,10 +179,8 @@ export async function downloadMaterial(
     await writer.write(bytes);
     await writer.close();
 
-    console.log("Downloaded to:", localFile.uri);
     return { success: true, uri: localFile.uri };
   } catch (err: any) {
-    console.error("downloadMaterial error:", err.message);
     return { success: false, error: err.message };
   }
 }
@@ -214,7 +193,6 @@ export async function getModulesByCourse(courseId: number) {
     .order("module_id");
 
   if (error) {
-    console.error("getModulesByCourse:", error.message);
     return [];
   }
   return data ?? [];

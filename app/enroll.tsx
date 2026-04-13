@@ -25,21 +25,21 @@ const { width } = Dimensions.get("window");
 const headerBg = require("../assets/images/header.png");
 
 interface dataTypes {
-  privacyAgreement: boolean | null; //for step1 - data priv notice
-  curriculum: string | null; //for step2 - program & curriculum details
+  privacyAgreement: boolean | null;
+  curriculum: string | null;
   curriculumId: number | null;
   specialization: string;
   specializationId: number | null;
   takerType: string | null;
   takerTypeId: number | null;
-  firstName: string; //for step3 - personal info
+  firstName: string;
   middleName: string;
   lastName: string;
   email: string;
   bachelorsDegree: string;
   lastSchool: string;
   province: string;
-  promo: string; //for step4 - promotions & payment
+  promo: string;
   promoId: number | null;
   paymentChannel: string;
   paymentChannelId: number | null;
@@ -51,7 +51,6 @@ interface dataTypes {
   attachmentType: string | null;
 }
 
-//initialize values for data preservation incase of misclick back nav
 const defaultValues: dataTypes = {
   privacyAgreement: null,
   curriculum: null,
@@ -79,7 +78,6 @@ const defaultValues: dataTypes = {
   attachmentType: null,
 };
 
-//input validation per step
 function validateStep(step: number, form: dataTypes): string[] {
   const errors: string[] = [];
 
@@ -138,7 +136,6 @@ export default function EnrollmentScreen() {
   const [isMethodOpen, setIsMethodOpen] = useState(false);
   const [receiptPreview, setReceiptPreview] = useState(false);
 
-  //summary section
   const [summary, setSummary] = useState<Record<string, boolean>>({
     program: false,
     personalInfo: false,
@@ -152,24 +149,6 @@ export default function EnrollmentScreen() {
     key: field,
     value: dataTypes[field],
   ) => setDataTypes((prev) => ({ ...prev, [key]: value }));
-
-  /* replacing placeholder
-  const majorshipOptions = [
-    "English",
-    "Filipino",
-    "Mathematics",
-    "Science",
-    "Social Values",
-    "Values Education",
-  ];
-  const promoOptions = [
-    "Advocacy Promo (BSEd and BEEd with specialization - 3500)",
-    "Advocacy Promo (BEEd - 2500)",
-    "Regular Rates (BSEd and BEEd with specialization - 5000)",
-    "Regular Rates (BEEd - 4000)",
-    "Summa Cum Laude",
-  ];
-  const paymentChannels = ["GCash", "Maya", "Bank Transfer", "Cash", "Others"]; */
 
   const curriculumOptions = [
     { id: 1, name: "BEEd" },
@@ -204,7 +183,6 @@ export default function EnrollmentScreen() {
     { id: 5, name: "Others" },
   ];
 
-  //attachment picker
   const handleAttachment = () => {
     Alert.alert("Upload Attachment", "Choose an option", [
       {
@@ -259,14 +237,12 @@ export default function EnrollmentScreen() {
     ]);
   };
 
-  //upload file to supabase
   const uploadAttachment = async (): Promise<string | null> => {
     if (!dataTypes.attachmentUri) return null;
 
     const fileName = `${Date.now()}_${dataTypes.attachmentName}`;
 
     try {
-      // Use ArrayBuffer instead of Blob
       const response = await fetch(dataTypes.attachmentUri);
       const arrayBuffer = await response.arrayBuffer();
 
@@ -293,35 +269,6 @@ export default function EnrollmentScreen() {
     }
   };
 
-  /*{
-    if (!dataTypes.attachmentUri) return null;
-
-    const fileName = `${Date.now()}_${dataTypes.attachmentName}`;
-    const fileExt = dataTypes.attachmentName?.split(".").pop();
-
-    const response = await fetch(dataTypes.attachmentUri);
-    const blob = await response.blob();
-
-    const { data, error } = await supabase.storage
-      .from("receipts")
-      .upload(`payments/${fileName}`, blob, {
-        contentType: dataTypes.attachmentType ?? "application/octet-stream",
-        upsert: false,
-      });
-
-    if (error) {
-      console.error("Upload error:", error.message);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("receipts")
-      .getPublicUrl(`payments/${fileName}`);
-
-    return urlData.publicUrl;
-  }; */
-
-  //pass data to supabase
   const handleSubmit = async () => {
     if (loading) return;
     setLoading(true);
@@ -938,10 +885,9 @@ export default function EnrollmentScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {dataTypes.attachmentUri && ( // preview section
+              {dataTypes.attachmentUri && (
                 <View style={{ marginTop: 10 }}>
                   {dataTypes.attachmentType === "application/pdf" ? (
-                    // for pdf viewing
                     <TouchableOpacity
                       style={styles.previewBtn}
                       onPress={() =>
@@ -956,7 +902,6 @@ export default function EnrollmentScreen() {
                       <Text style={styles.previewBtnText}>View PDF</Text>
                     </TouchableOpacity>
                   ) : (
-                    // for image viewing/toggling
                     <>
                       <TouchableOpacity
                         style={styles.previewBtn}
@@ -1081,10 +1026,9 @@ export default function EnrollmentScreen() {
                       label: "Attachment",
                       value: dataTypes.attachmentName ?? "None",
                     })}
-                    {dataTypes.attachmentUri && ( // preview section
+                    {dataTypes.attachmentUri && (
                       <View style={{ marginTop: 10 }}>
                         {dataTypes.attachmentType === "application/pdf" ? (
-                          // for pdf viewing
                           <TouchableOpacity
                             style={styles.previewBtn}
                             onPress={() =>
@@ -1101,7 +1045,6 @@ export default function EnrollmentScreen() {
                             <Text style={styles.previewBtnText}>View PDF</Text>
                           </TouchableOpacity>
                         ) : (
-                          // for viewing/toggling
                           <>
                             <TouchableOpacity
                               style={styles.previewBtn}
