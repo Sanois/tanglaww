@@ -19,7 +19,7 @@ export default function AdminTodo() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [duedate, setDueDate] = useState<Date | null>(null);
   const [datePicker, setDatePicker] = useState(false);
   const [timePicker, setTimePicker] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ export default function AdminTodo() {
         admin_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
-        dueDate: dueDate ? dueDate.toISOString() : null,
+        duedate: duedate ? duedate.toISOString() : null,
       });
 
       if (error) throw new Error(error.message);
@@ -55,16 +55,16 @@ export default function AdminTodo() {
     }
   };
 
-  const formattedDate = dueDate
-    ? dueDate.toLocaleDateString("en-US", {
+  const formattedDate = duedate
+    ? duedate.toLocaleDateString("en-US", {
         month: "2-digit",
         day: "2-digit",
         year: "numeric",
       })
     : "";
 
-  const formattedTime = dueDate
-    ? dueDate.toLocaleTimeString("en-US", {
+  const formattedTime = duedate
+    ? duedate.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -130,13 +130,13 @@ export default function AdminTodo() {
 
         {datePicker && (
           <DateTimePicker
-            value={dueDate ?? new Date()}
+            value={duedate ?? new Date()}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={(event, date) => {
               setDatePicker(false);
               if (date) {
-                const updated = dueDate ? new Date(dueDate) : new Date();
+                const updated = duedate ? new Date(duedate) : new Date();
                 updated.setFullYear(
                   date.getFullYear(),
                   date.getMonth(),
@@ -150,13 +150,13 @@ export default function AdminTodo() {
 
         {timePicker && (
           <DateTimePicker
-            value={dueDate ?? new Date()}
+            value={duedate ?? new Date()}
             mode="time"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={(event, date) => {
               setTimePicker(false);
               if (date) {
-                const updated = dueDate ? new Date(dueDate) : new Date();
+                const updated = duedate ? new Date(duedate) : new Date();
                 updated.setHours(date.getHours(), date.getMinutes());
                 setDueDate(updated);
               }

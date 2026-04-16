@@ -1,8 +1,14 @@
 import { AdminProvider } from "@/context/AdminContext";
+import {
+  clearSession,
+  generateSessionToken,
+  registerSession,
+  validateSession,
+} from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, View } from "react-native";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -33,6 +39,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       .single();
 
     if (student) {
+      const { valid, studentId } = await validateSession();
+
+      if (studentId === null) {
+        const token = await generateSessionToken();
+        await registerSession(student.id, token);
+
+        setRole("student");
+        setLoading(false);
+        return;
+      }
+
+      if (!valid) {
+        await supabase.auth.signOut();
+        if (studentId) await clearSession(studentId);
+
+        setRole(null);
+        setLoading(false);
+
+        Alert.alert(
+          "Session Expired",
+          "Your account has been logged in from another device. Please sign in again.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+
       setRole("student");
       setLoading(false);
       return;
@@ -77,7 +109,30 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      async (nextState) => {
+        if (nextState === "active" && role === "student") {
+          const { valid, studentId } = await validateSession();
+          if (!valid) {
+            await supabase.auth.signOut();
+            if (studentId) await clearSession(studentId);
+            setSession(null);
+            setRole(null);
+            Alert.alert(
+              "Session Expired",
+              "Your account has been logged in from another device.",
+              [{ text: "OK" }],
+            );
+          }
+        }
+      },
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      appStateSubscription.remove();
+    };
   }, []);
 
   useEffect(() => {

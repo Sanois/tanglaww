@@ -1,10 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
-  Image, // Added Image import
+  Image,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -30,11 +30,40 @@ export default function AdminHamburger({
 }: AdminHamburgerProps) {
   const router = useRouter();
   const { pendingCount } = useAdmin();
+  const [admin, setAdmin] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
 
   const navigateTo = (path: string) => {
     onClose();
     router.push(path as any);
   };
+
+  useEffect(() => {
+    const fetchAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: adminData } = await supabase
+        .from("admin")
+        .select("firstName, lastName, email")
+        .eq("admin_id", user.id)
+        .maybeSingle();
+
+      if (!adminData) return;
+
+      setAdmin({
+        firstName: adminData.firstName,
+        lastName: adminData.lastName,
+        email: adminData.email,
+      });
+    };
+    fetchAdmin();
+  }, []);
 
   return (
     <Modal
@@ -63,9 +92,11 @@ export default function AdminHamburger({
                 <View style={styles.avatarCircle}>
                   <Ionicons name="person" size={35} color="#2F459B" />
                 </View>
-                <Text style={styles.adminName}>JANE S. DOE</Text>
+                <Text style={styles.adminName}>
+                  {admin.firstName} {admin.lastName}
+                </Text>
                 <Text style={styles.adminRole}>Instructor</Text>
-                <Text style={styles.adminEmail}>janedoe@gmail.com</Text>
+                <Text style={styles.adminEmail}>{admin.email}</Text>
               </View>
             </SafeAreaView>
           </View>

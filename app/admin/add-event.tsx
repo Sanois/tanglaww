@@ -4,16 +4,16 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function AddEventScreen() {
@@ -87,7 +87,7 @@ export default function AddEventScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.form}>
-        <Text style={styles.label}>Event Title:*</Text>
+        <Text style={styles.label}>Event Title:</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g. LET Express - Online Session"
@@ -113,7 +113,7 @@ export default function AddEventScreen() {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Date:*</Text>
+        <Text style={styles.label}>Date:</Text>
         <TouchableOpacity
           style={styles.inputWithIcon}
           onPress={() => setShowDatePicker(true)}
@@ -124,7 +124,7 @@ export default function AddEventScreen() {
           <Ionicons name="calendar-outline" size={20} color="#FFD75E" />
         </TouchableOpacity>
 
-        <Text style={styles.label}>Time:*</Text>
+        <Text style={styles.label}>Time:</Text>
         <TouchableOpacity
           style={styles.inputWithIcon}
           onPress={() => setShowTimePicker(true)}

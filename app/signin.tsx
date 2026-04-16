@@ -1,3 +1,5 @@
+import { generateSessionToken, registerSession } from "@/lib/session";
+import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -10,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { signIn } from "../lib/auth";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -25,28 +26,50 @@ export default function SignInScreen() {
   };
 
   const handleSignIn = async () => {
-    const errors: string[] = [];
+    const newErrors: string[] = [];
     if (!email.trim() || !pass.trim())
-      errors.push("Kindly fill in all the necessary information.");
+      newErrors.push("Kindly fill in all the necessary information.");
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      errors.push("Please enter a valid email address.");
+      newErrors.push("Please enter a valid email address.");
 
-    if (errors.length > 0) {
-      setErrors(errors);
+    if (newErrors.length > 0) {
+      setErrors(newErrors);
       return;
     }
     setErrors([]);
     setLoading(true);
 
-    const { data, error } = await signIn(email, pass);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass,
+      });
 
-    if (error) {
-      setErrors([error.message]);
-      return;
+      if (error) {
+        setErrors([error.message]);
+        return;
+      }
+
+      const { data: student, error: studentError } = await supabase
+        .from("student")
+        .select("id")
+        .eq("email", email.trim().toLowerCase())
+        .single();
+
+      if (studentError || !student) {
+        router.replace("/homepage");
+        return;
+      }
+
+      const token = await generateSessionToken();
+      await registerSession(student.id, token);
+
+      router.replace("/homepage");
+    } catch (err: any) {
+      setErrors([err.message ?? "Something went wrong."]);
+    } finally {
+      setLoading(false);
     }
-
-    router.replace("/homepage");
   };
 
   return (

@@ -262,11 +262,13 @@ export default function CalendarScreen() {
                 <View style={styles.dotRow}>
                   {hasEvent(day) && (
                     <View
+                      key={`event-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#0D2A94" }]}
                     />
                   )}
                   {hasTodo(day) && (
                     <View
+                      key={`todo-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#FFB800" }]}
                     />
                   )}
@@ -325,7 +327,7 @@ export default function CalendarScreen() {
             ) : (
               events.map((event) => (
                 <TouchableOpacity
-                  key={event.id}
+                  key={event.event_id}
                   style={styles.eventCard}
                   onPress={() => event.link && Linking.openURL(event.link)}
                 >

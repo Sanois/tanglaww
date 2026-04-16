@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useAdmin } from "../../context/AdminContext";
 import { adminService } from "../../services/adminService";
@@ -28,8 +28,10 @@ export default function AdminAudit() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View>
-          <Text style={styles.userName}>{item.user}</Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
+          <Text style={styles.userName}>
+            {item.student?.firstName} {item.student?.lastName}
+          </Text>
+          <Text style={styles.userEmail}>{item.student?.email}</Text>
         </View>
         <Text style={styles.dateText}>{item.date}</Text>
       </View>
@@ -44,13 +46,13 @@ export default function AdminAudit() {
       <View style={styles.btnRow}>
         <TouchableOpacity
           style={styles.rejBtn}
-          onPress={() => handleAction(item.id, "rejected")}
+          onPress={() => handleAction(item.enrollment_id, "rejected")}
         >
           <Text style={styles.rejText}>Reject</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.appBtn}
-          onPress={() => handleAction(item.id, "approved")}
+          onPress={() => handleAction(item.enrollment_id, "approved")}
         >
           <Text style={styles.appText}>Approve</Text>
         </TouchableOpacity>
@@ -76,7 +78,9 @@ export default function AdminAudit() {
         <FlatList
           data={auditRequests}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) =>
+            item.enrollment_id?.toString() ?? index.toString()
+          }
           contentContainerStyle={{ padding: 20 }}
         />
       )}

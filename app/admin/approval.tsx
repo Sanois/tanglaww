@@ -16,12 +16,10 @@ import {
   View,
 } from "react-native";
 
-// ── Generate a 6-digit numeric code ───────────────────────────────────────────
 const generateCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// ── Send activation email via Edge Function ───────────────────────────────────
 const sendActivationEmail = async (
   to: string,
   studentName: string,
@@ -61,7 +59,6 @@ export default function AdminApproval() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  // ── Code modal state ──────────────────────────────────────────────────────────
   const [codeModal, setCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [emailSent, setEmailSent] = useState<boolean | null>(null);
@@ -89,7 +86,6 @@ export default function AdminApproval() {
     return v?.verificationStatus === true;
   });
 
-  // ── Approve + generate code + send email ──────────────────────────────────────
   const handleApprove = async (enrollment: any) => {
     console.log("handleApprove called");
     console.log("Full enrollment object:", JSON.stringify(enrollment, null, 2));
@@ -108,7 +104,6 @@ export default function AdminApproval() {
                 ? enrollment.verification[0]
                 : enrollment.verification;
 
-              // 1. Update verification status
               const { error: verifyError } = await supabase
                 .from("verification")
                 .update({
@@ -118,8 +113,6 @@ export default function AdminApproval() {
                 .eq("verification_id", v?.verification_id);
 
               if (verifyError) throw new Error(verifyError.message);
-
-              // 2. Check if valid unused code already exists
 
               console.log("Verification updated, generating code...");
               console.log("enrollment_id:", enrollment.enrollment_id);
@@ -142,7 +135,6 @@ export default function AdminApproval() {
               if (existingCode) {
                 code = existingCode.code;
               } else {
-                // Generate new code
                 code = generateCode();
 
                 const expiresAt = new Date();
@@ -162,7 +154,6 @@ export default function AdminApproval() {
                 if (codeError) throw new Error(codeError.message);
               }
 
-              // 3. Send email via edge function
               const studentName = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
               const sent = await sendActivationEmail(
                 enrollment.student.email,
@@ -170,7 +161,6 @@ export default function AdminApproval() {
                 code,
               );
 
-              // 4. Show modal with code + email status
               setGeneratedCode(code);
               setEmailSent(sent);
               setCodeStudent({
@@ -193,7 +183,6 @@ export default function AdminApproval() {
     );
   };
 
-  // ── Reject ────────────────────────────────────────────────────────────────────
   const handleReject = async (enrollment: any) => {
     Alert.alert(
       "Reject Enrollment",
@@ -232,7 +221,6 @@ export default function AdminApproval() {
     );
   };
 
-  // ── View code for already-approved student ────────────────────────────────────
   const handleViewCode = async (enrollment: any) => {
     const { data } = await supabase
       .from("activation_codes")
@@ -264,7 +252,7 @@ export default function AdminApproval() {
     }
 
     setGeneratedCode(data.code);
-    setEmailSent(null); // null = viewing existing, not a fresh send
+    setEmailSent(null);
     setCodeStudent({
       name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
       email: enrollment.student.email,
@@ -272,7 +260,6 @@ export default function AdminApproval() {
     setCodeModal(true);
   };
 
-  // ── Resend email from modal ───────────────────────────────────────────────────
   const handleResendEmail = async () => {
     if (!codeStudent) return;
     const sent = await sendActivationEmail(
@@ -289,7 +276,6 @@ export default function AdminApproval() {
     );
   };
 
-  // ── Card ──────────────────────────────────────────────────────────────────────
   const ApprovalCard = ({
     enrollment,
     showActions,
@@ -394,22 +380,18 @@ export default function AdminApproval() {
         </ScrollView>
       )}
 
-      {/* ── Activation Code Modal ──────────────────────────────────────────────── */}
       <Modal visible={codeModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            {/* Header */}
             <View style={styles.modalHeader}>
               <Ionicons name="checkmark-circle" size={40} color="#27ae60" />
               <Text style={styles.modalTitle}>Student Approved!</Text>
             </View>
 
-            {/* Student info */}
             <Text style={styles.modalSubtitle}>Activation code for:</Text>
             <Text style={styles.modalStudentName}>{codeStudent?.name}</Text>
             <Text style={styles.modalEmail}>{codeStudent?.email}</Text>
 
-            {/* Email status banner */}
             {emailSent === true && (
               <View style={styles.emailSuccessBanner}>
                 <Ionicons name="mail" size={16} color="#27ae60" />
@@ -427,7 +409,6 @@ export default function AdminApproval() {
               </View>
             )}
 
-            {/* Code display */}
             <View style={styles.codeDisplay}>
               {generatedCode.split("").map((digit, i) => (
                 <View key={i} style={styles.codeDigitBox}>
@@ -440,7 +421,6 @@ export default function AdminApproval() {
               Expires in 7 days · One-time use only
             </Text>
 
-            {/* Resend button */}
             <TouchableOpacity
               style={styles.resendBtn}
               onPress={handleResendEmail}
@@ -591,7 +571,6 @@ const styles = StyleSheet.create({
   tabItem: { flex: 1, alignItems: "center" },
   tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
 
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -622,7 +601,6 @@ const styles = StyleSheet.create({
   },
   modalEmail: { fontSize: 12, color: "#777", marginBottom: 12 },
 
-  // Email status banners
   emailSuccessBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -650,7 +628,6 @@ const styles = StyleSheet.create({
   },
   emailFailText: { fontSize: 12, color: "#E74C3C", fontWeight: "600" },
 
-  // Code display
   codeDisplay: {
     flexDirection: "row",
     gap: 8,

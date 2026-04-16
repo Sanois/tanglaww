@@ -1,3 +1,4 @@
+import { clearSession, getStoredStudentId } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -39,6 +40,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
       router.push(path as any);
     }, 100);
   };
+
   useEffect(() => {
     const fetchStudent = async () => {
       const {
@@ -162,9 +164,10 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
         <TouchableOpacity
           style={styles.menuItem}
           onPress={async () => {
-            onClose();
+            const studentId = await getStoredStudentId();
+            if (studentId) await clearSession(studentId);
             await supabase.auth.signOut();
-            router.replace("/login" as any);
+            router.replace("/login");
           }}
         >
           <Ionicons name="log-out-outline" size={22} color="#FF4D4D" />

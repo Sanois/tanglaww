@@ -64,7 +64,7 @@ export default function AdminCalendar() {
       .from("admin_todo")
       .select("*")
       .eq("admin_id", user.id)
-      .order("event_date", { ascending: true });
+      .order("createdat", { ascending: true });
 
     setEvents(eventData ?? []);
     setTodos(todoData ?? []);
@@ -78,7 +78,7 @@ export default function AdminCalendar() {
   const handleToggleTodo = async (todo: any) => {
     const { error } = await supabase
       .from("admin_todo")
-      .update({ is_completed: !todo.is_completed })
+      .update({ iscompleted: !todo.iscompleted })
       .eq("id", todo.id);
 
     if (error) {
@@ -112,7 +112,18 @@ export default function AdminCalendar() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await supabase.from("calendar_events").delete().eq("id", id);
+            const { data, error } = await supabase
+              .from("calendar_events")
+              .delete()
+              .eq("event_id", id)
+              .select();
+
+            if (error) {
+              Alert.alert("Error", `${error.message}\nCode: ${error.code}`);
+              return;
+            }
+
+            Alert.alert("Success", `Deleted ${data.length} row(s)`);
             fetchData();
           },
         },
@@ -177,8 +188,8 @@ export default function AdminCalendar() {
 
   const hasTodo = (day: number) =>
     todos.some((t) => {
-      if (!t.event_date) return false;
-      const d = new Date(t.event_date);
+      if (!t.duedate) return false;
+      const d = new Date(t.duedate);
       return (
         d.getDate() === day &&
         d.getMonth() === currentMonth &&
@@ -219,7 +230,10 @@ export default function AdminCalendar() {
 
         <View style={styles.calendarGrid}>
           {DAYS.map((day) => (
-            <Text key={day} style={styles.dayLabel}>
+            <Text
+              key={`day-${currentYear}-${currentMonth}-${day}`}
+              style={styles.dayLabel}
+            >
               {day}
             </Text>
           ))}
@@ -234,7 +248,7 @@ export default function AdminCalendar() {
               currentYear === today.getFullYear();
             return (
               <TouchableOpacity
-                key={day}
+                key={`day-${currentYear}-${currentMonth}-${day}`}
                 style={[styles.dateBox, isSelected && styles.selectedDate]}
                 onPress={() => setSelectedDate(day)}
               >
@@ -249,11 +263,13 @@ export default function AdminCalendar() {
                 <View style={styles.dotRow}>
                   {hasEvent(day) && (
                     <View
+                      key={`event-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#2F459B" }]}
                     />
                   )}
                   {hasTodo(day) && (
                     <View
+                      key={`todo-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#FFD75E" }]}
                     />
                   )}
@@ -317,7 +333,7 @@ export default function AdminCalendar() {
                 </Text>
               ) : (
                 events.map((event) => (
-                  <View key={event.id} style={styles.eventCard}>
+                  <View key={event.event_id} style={styles.eventCard}>
                     <TouchableOpacity
                       style={styles.eventInfo}
                       onPress={() => event.link && Linking.openURL(event.link)}
@@ -344,7 +360,7 @@ export default function AdminCalendar() {
                         </Text>
                       </View>
                       <TouchableOpacity
-                        onPress={() => handleDeleteEvent(event.id)}
+                        onPress={() => handleDeleteEvent(event.event_id)}
                       >
                         <Ionicons
                           name="trash-outline"
@@ -369,12 +385,12 @@ export default function AdminCalendar() {
                     key={todo.id}
                     style={[
                       styles.todoCard,
-                      todo.is_completed && { opacity: 0.6 },
+                      todo.iscompleted && { opacity: 0.6 },
                     ]}
                   >
                     <TouchableOpacity onPress={() => handleToggleTodo(todo)}>
                       <Ionicons
-                        name={todo.is_completed ? "checkbox" : "square-outline"}
+                        name={todo.iscompleted ? "checkbox" : "square-outline"}
                         size={24}
                         color="#2F459B"
                       />
@@ -383,7 +399,7 @@ export default function AdminCalendar() {
                       <Text
                         style={[
                           styles.todoTitle,
-                          todo.is_completed && {
+                          todo.iscompleted && {
                             textDecorationLine: "line-through",
                             color: "#999",
                           },
@@ -391,10 +407,9 @@ export default function AdminCalendar() {
                       >
                         {todo.title}
                       </Text>
-                      {todo.event_date && (
+                      {todo.duedate && (
                         <Text style={styles.todoDate}>
-                          {formatDate(todo.event_date)}{" "}
-                          {formatTime(todo.event_date)}
+                          {formatDate(todo.duedate)} {formatTime(todo.duedate)}
                         </Text>
                       )}
                     </View>

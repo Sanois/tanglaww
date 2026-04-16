@@ -16,6 +16,10 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [adminName, setAdminName] = useState({
+    firstName: "",
+    lastName: "",
+  });
 
   const fetchAnnouncements = useCallback(async () => {
     const { data } = await supabase
@@ -27,6 +31,23 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    const fetchAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("admin")
+        .select("firstName, lastName")
+        .eq("admin_id", user.id)
+        .single();
+
+      if (data)
+        setAdminName({ firstName: data.firstName, lastName: data.lastName });
+    };
+
+    fetchAdmin();
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
@@ -48,7 +69,9 @@ export default function AdminDashboard() {
         style={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.welcomeText}>Welcome Back!</Text>
+        <Text style={styles.welcomeText}>
+          Welcome Back, {adminName.firstName} {adminName.lastName}!
+        </Text>
 
         <View style={styles.heroCard}>
           <View style={styles.imagePlaceholder}>
@@ -80,7 +103,7 @@ export default function AdminDashboard() {
           ) : (
             announcements.map((a, i) => (
               <View
-                key={a.id}
+                key={a.id ?? i}
                 style={
                   i > 0
                     ? {

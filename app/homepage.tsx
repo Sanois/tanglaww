@@ -141,7 +141,7 @@ export default function Homepage() {
           ) : (
             announcements.map((a, i) => (
               <View
-                key={a.id}
+                key={a.id ?? i}
                 style={
                   i > 0
                     ? {
