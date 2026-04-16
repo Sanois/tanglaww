@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -50,6 +51,18 @@ export default function SignInScreen() {
         return;
       }
 
+      const { data: admin } = await supabase
+        .from("admin")
+        .select("admin_id")
+        .eq("admin_id", data.user.id)
+        .single();
+
+      if (admin) {
+        await supabase.auth.signOut();
+        setErrors(["Admins must use the Admin Sign In page."]);
+        return;
+      }
+
       const { data: student, error: studentError } = await supabase
         .from("student")
         .select("id")
@@ -57,13 +70,20 @@ export default function SignInScreen() {
         .single();
 
       if (studentError || !student) {
-        router.replace("/homepage");
+        await supabase.auth.signOut();
+        setErrors(["No student account found."]);
         return;
       }
 
       const token = await generateSessionToken();
       await registerSession(student.id, token);
 
+      Toast.show({
+        type: "success",
+        text1: "You have successfuly signed in!",
+        position: "bottom",
+        visibilityTime: 3500,
+      });
       router.replace("/homepage");
     } catch (err: any) {
       setErrors([err.message ?? "Something went wrong."]);

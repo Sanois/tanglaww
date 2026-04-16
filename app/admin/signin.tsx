@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function AdminSignIn() {
   const router = useRouter();
@@ -42,16 +43,11 @@ export default function AdminSignIn() {
       setLoading(false);
       return;
     }
-    console.log("Logged in user:", data.user);
-    console.log("User ID:", data.user?.id);
-    console.log("User Email:", data.user?.email);
-    const { data: adminRow, error: adminError } = await supabase
+    const { data: adminRow } = await supabase
       .from("admin")
       .select("admin_id")
       .eq("admin_id", data.user.id)
       .single();
-    console.log("Admin query result:", adminRow);
-    console.log("Admin query error:", adminError);
 
     if (!adminRow) {
       await supabase.auth.signOut();
@@ -59,7 +55,12 @@ export default function AdminSignIn() {
       setLoading(false);
       return;
     }
-
+    Toast.show({
+      type: "success",
+      text1: "You have successfuly signed in",
+      position: "bottom",
+      visibilityTime: 3500,
+    });
     setLoading(false);
   };
   return (

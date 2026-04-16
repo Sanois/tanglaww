@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   Modal,
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { useAdmin } from "../../context/AdminContext";
 
 const { width } = Dimensions.get("window");
@@ -176,10 +178,28 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={[styles.navItem, { borderBottomWidth: 0 }]}
-                  onPress={async () => {
-                    onClose();
-                    await supabase.auth.signOut();
-                    router.replace("/login" as any);
+                  onPress={() => {
+                    Alert.alert(
+                      "Sign Out",
+                      "Are you sure you want to sign out?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Sign Out",
+                          style: "destructive",
+                          onPress: async () => {
+                            await supabase.auth.signOut();
+                            Toast.show({
+                              type: "success",
+                              text1: "You have logged out successfully",
+                              position: "bottom",
+                              visibilityTime: 3500,
+                            });
+                            router.replace("/login");
+                          },
+                        },
+                      ],
+                    );
                   }}
                 >
                   <Ionicons name="log-out-outline" size={20} color="#E74C3C" />

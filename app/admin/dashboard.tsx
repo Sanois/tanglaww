@@ -14,6 +14,7 @@ import AdminHamburger from "./hamburger";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [pendingEnrollments, setPendingEnrollments] = useState<any[]>([]);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [adminName, setAdminName] = useState({
@@ -47,8 +48,30 @@ export default function AdminDashboard() {
         setAdminName({ firstName: data.firstName, lastName: data.lastName });
     };
 
+    const fetchPending = async () => {
+      const { data } = await supabase
+        .from("enrollment")
+        .select(
+          `
+            enrollment_id,
+            student (firstName, lastName),
+            verification!enrollment_verification_id_fkey (verificationStatus)
+        `,
+        )
+        .limit(3);
+
+      const pending = (data ?? []).filter((e: any) => {
+        const v = Array.isArray(e.verification)
+          ? e.verification[0]
+          : e.verification;
+        return v?.verificationStatus === false;
+      });
+      setPendingEnrollments(pending);
+    };
+
     fetchAdmin();
     fetchAnnouncements();
+    fetchPending();
   }, [fetchAnnouncements]);
 
   return (
@@ -141,19 +164,38 @@ export default function AdminDashboard() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.approvalItem}
-          onPress={() => router.push("/admin/approval")}
-        >
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person-outline" size={20} color="#555" />
+        {pendingEnrollments.length === 0 ? (
+          <View style={styles.approvalItem}>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color="#27ae60"
+            />
+            <View style={styles.approvalTextContainer}>
+              <Text style={styles.approvalName}>All caught up!</Text>
+              <Text style={styles.approvalSub}>No pending enrollments</Text>
+            </View>
           </View>
-          <View style={styles.approvalTextContainer}>
-            <Text style={styles.approvalName}>New registree!</Text>
-            <Text style={styles.approvalSub}>Lorem ipsum dolor sit amet</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#CCC" />
-        </TouchableOpacity>
+        ) : (
+          pendingEnrollments.map((e: any) => (
+            <TouchableOpacity
+              key={e.enrollment_id}
+              style={styles.approvalItem}
+              onPress={() => router.push("/admin/approval" as any)}
+            >
+              <View style={styles.avatarCircle}>
+                <Ionicons name="person-outline" size={20} color="#555" />
+              </View>
+              <View style={styles.approvalTextContainer}>
+                <Text style={styles.approvalName}>
+                  {e.student?.firstName} {e.student?.lastName}
+                </Text>
+                <Text style={styles.approvalSub}>Pending approval</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#CCC" />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
       <View style={styles.tabBar}>

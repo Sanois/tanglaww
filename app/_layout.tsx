@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, AppState, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -196,6 +197,7 @@ export default function RootLayout() {
           <Stack.Screen name="materials" />
         </Stack>
       </AuthGate>
+      <Toast />
     </AdminProvider>
   );
 }

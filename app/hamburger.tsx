@@ -4,6 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   SafeAreaView,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 const { width } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.75;
@@ -163,11 +165,26 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={async () => {
-            const studentId = await getStoredStudentId();
-            if (studentId) await clearSession(studentId);
-            await supabase.auth.signOut();
-            router.replace("/login");
+          onPress={() => {
+            Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Sign Out",
+                style: "destructive",
+                onPress: async () => {
+                  const studentId = await getStoredStudentId();
+                  if (studentId) await clearSession(studentId);
+                  await supabase.auth.signOut();
+                  Toast.show({
+                    type: "success",
+                    text1: "You have logged out successfully",
+                    position: "bottom",
+                    visibilityTime: 3500,
+                  });
+                  router.replace("/login");
+                },
+              },
+            ]);
           }}
         >
           <Ionicons name="log-out-outline" size={22} color="#FF4D4D" />
