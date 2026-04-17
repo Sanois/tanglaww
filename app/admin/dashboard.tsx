@@ -166,15 +166,16 @@ export default function AdminDashboard() {
 
         {pendingEnrollments.length === 0 ? (
           <View style={styles.approvalItem}>
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={24}
-              color="#27ae60"
-            />
             <View style={styles.approvalTextContainer}>
               <Text style={styles.approvalName}>All caught up!</Text>
               <Text style={styles.approvalSub}>No pending enrollments</Text>
             </View>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color="#27ae60"
+              style={{ marginLeft: "auto" }}
+            />
           </View>
         ) : (
           pendingEnrollments.map((e: any) => (
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CCC",
   },
-  approvalTextContainer: { flex: 1, marginLeft: 15 },
+  approvalTextContainer: { flex: 1 },
   approvalName: { fontSize: 16, fontWeight: "bold", color: "#2F459B" },
   approvalSub: { fontSize: 12, color: "#777" },
   tabBar: {

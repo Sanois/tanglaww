@@ -150,6 +150,11 @@ export default function EnrollmentScreen() {
     value: dataTypes[field],
   ) => setDataTypes((prev) => ({ ...prev, [key]: value }));
 
+  const typeOfTakerOptions = [
+    { id: 1, name: "First time" },
+    { id: 2, name: "Retaker" },
+  ];
+
   const curriculumOptions = [
     { id: 1, name: "BEEd" },
     { id: 2, name: "BSEd" },
@@ -280,9 +285,41 @@ export default function EnrollmentScreen() {
         .maybeSingle();
 
       if (existingStudent) {
-        throw new Error(
-          "An account with this email already exists. Please check your registration status instead.",
-        );
+        const { data: existingEnrollment } = await supabase
+          .from("enrollment")
+          .select(
+            `
+            enrollment_id,
+            verification!enrollment_verification_id_fkey (
+                allow_reenrollment, verificationStatus
+            )
+        `,
+          )
+          .eq("student_id", existingStudent.id)
+          .single();
+
+        const v = Array.isArray(existingEnrollment?.verification)
+          ? existingEnrollment?.verification[0]
+          : existingEnrollment?.verification;
+
+        if (!v?.allow_reenrollment) {
+          Alert.alert(
+            "Email Already Registered",
+            "An account with this email already exists. If you were rejected and want to re-enroll, please contact the admin first.",
+          );
+          setLoading(false);
+          return;
+        }
+
+        await supabase
+          .from("verification")
+          .update({
+            verificationStatus: false,
+            verificationNotes: null,
+            allow_reenrollment: false,
+            lastVerificationDate: null,
+          })
+          .eq("verification_id", existingEnrollment?.enrollment_id);
       }
       const { data: studentData, error: studentError } = await supabase
         .from("student")
@@ -604,60 +641,27 @@ export default function EnrollmentScreen() {
             <View style={styles.formBody}>
               {errorRender()}
               <Text style={styles.label}>Type of Taker:*</Text>
-              <View style={{ flexDirection: "row", marginBottom: 10 }}>
+              {typeOfTakerOptions.map((opt) => (
                 <TouchableOpacity
+                  key={opt.id}
                   style={styles.radioRow}
                   onPress={() => {
-                    setField(
-                      "takerType",
-                      dataTypes.takerType === "First time"
-                        ? null
-                        : "First time",
-                    );
-                    setField(
-                      "takerTypeId",
-                      dataTypes.takerType === "First time" ? null : 1,
-                    );
+                    setField("takerType", opt.name);
+                    setField("takerTypeId", opt.id);
                   }}
                 >
                   <Ionicons
                     name={
-                      dataTypes.takerType === "First time"
+                      dataTypes.takerType === opt.name
                         ? "radio-button-on"
                         : "radio-button-off"
                     }
                     size={22}
                     color="#0D2A94"
                   />
-                  <Text style={styles.radioLabel}>First time</Text>
+                  <Text style={styles.radioLabel}>{opt.name}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.radioRow, { marginLeft: 20 }]}
-                  onPress={() => {
-                    setField(
-                      "takerType",
-                      dataTypes.takerType === "First time"
-                        ? null
-                        : "First time",
-                    );
-                    setField(
-                      "takerTypeId",
-                      dataTypes.takerType === "First time" ? null : 1,
-                    );
-                  }}
-                >
-                  <Ionicons
-                    name={
-                      dataTypes.takerType === "Retaker"
-                        ? "radio-button-on"
-                        : "radio-button-off"
-                    }
-                    size={22}
-                    color="#0D2A94"
-                  />
-                  <Text style={styles.radioLabel}>Retaker</Text>
-                </TouchableOpacity>
-              </View>
+              ))}
 
               <Text style={styles.label}>Curriculum:*</Text>
               {curriculumOptions.map((opt) => (

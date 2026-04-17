@@ -23,6 +23,35 @@ import {
 
 const { height } = Dimensions.get("window");
 
+const generateCode = (): string =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+const sendActivationEmail = async (
+  to: string,
+  studentName: string,
+  code: string,
+): Promise<boolean> => {
+  try {
+    const response = await fetch(
+      "https://ohqzmjlerxudlhggxqnn.supabase.co/functions/v1/send-activation-email",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        body: JSON.stringify({ to, studentName, code }),
+      },
+    );
+    const text = await response.text();
+    const data = JSON.parse(text);
+    return data?.success === true;
+  } catch (err) {
+    console.error("Email send error:", err);
+    return false;
+  }
+};
+
 export default function RegistrantDetails() {
   const { id, name } = useLocalSearchParams();
   const router = useRouter();
@@ -36,6 +65,18 @@ export default function RegistrantDetails() {
   const [paymentPreview, setPaymentPreview] = useState(false);
   const slideAnimation = useState(new Animated.Value(height))[0];
 
+  const [codeModal, setCodeModal] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
+  const [codeStudent, setCodeStudent] = useState<{
+    name: string;
+    email: string;
+  } | null>(null);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [allowReenrollment, setAllowReenrollment] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+
   const displayName =
     typeof name === "string" ? name.toUpperCase() : "REGISTRANT";
 
@@ -45,30 +86,30 @@ export default function RegistrantDetails() {
 
   const fetchEnrollmentDetails = async () => {
     setLoading(true);
-
     const { data, error } = await supabase
       .from("enrollment")
       .select(
         `
-                enrollment_id,
-                student (
-                    firstName, lastName, middleName,
-                    email, bachelorsDegree, lastSchoolAttended,
-                    province, profilephotourl
-                ),
-                curriculum!enrollment_curriculum_id_fkey (curriculumName),
-                specialization!enrollment_specialization_id_fkey (specializationName),
-                type_of_taker!enrollment_typeOfTaker_id_fkey (typeOfTaker),
-                promo!enrollment_promo_id_fkey (promo),
-                verification!enrollment_verification_id_fkey (
-                    verification_id, verificationStatus, verificationNotes
-                ),
-                paymentDetails (
-                    amountTransferred, referenceNumber,
-                    proofOfPaymentUrl,
-                    payment_channel!paymentDetails_paymentChannel_id_fkey (paymentChannelName)
-                )
-            `,
+        enrollment_id,
+        student_id,
+        student (
+          firstName, lastName, middleName,
+          email, bachelorsDegree, lastSchoolAttended,
+          province, profilephotourl
+        ),
+        curriculum!enrollment_curriculum_id_fkey (curriculumName),
+        specialization!enrollment_specialization_id_fkey (specializationName),
+        type_of_taker!enrollment_typeOfTaker_id_fkey (typeOfTaker),
+        promo!enrollment_promo_id_fkey (promo),
+        verification!enrollment_verification_id_fkey (
+          verification_id, verificationStatus, verificationNotes, allow_reenrollment
+        ),
+        paymentDetails (
+          amountTransferred, referenceNumber,
+          proofOfPaymentUrl,
+          payment_channel!paymentDetails_paymentChannel_id_fkey (paymentChannelName)
+        )
+      `,
       )
       .eq("enrollment_id", id)
       .single();
@@ -78,13 +119,47 @@ export default function RegistrantDetails() {
       setLoading(false);
       return;
     }
-
     setEnrollment(data);
+
+    const v = Array.isArray(data.verification)
+      ? data.verification[0]
+      : data.verification;
+    setAllowReenrollment(v?.allow_reenrollment ?? false);
     setLoading(false);
   };
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
+  };
+
+  const handleToggleReenrollment = async () => {
+    setToggleLoading(true);
+    try {
+      const v = Array.isArray(enrollment.verification)
+        ? enrollment.verification[0]
+        : enrollment.verification;
+
+      const newValue = !allowReenrollment;
+
+      const { error } = await supabase
+        .from("verification")
+        .update({ allow_reenrollment: newValue })
+        .eq("verification_id", v?.verification_id);
+
+      if (error) throw new Error(error.message);
+
+      setAllowReenrollment(newValue);
+      Alert.alert(
+        newValue ? "✅ Re-enrollment Allowed" : "Re-enrollment Disabled",
+        newValue
+          ? "This student can now re-enroll with the same email."
+          : "Re-enrollment has been disabled for this student.",
+      );
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Something went wrong.");
+    } finally {
+      setToggleLoading(false);
+    }
   };
 
   const InfoRow = ({
@@ -130,6 +205,13 @@ export default function RegistrantDetails() {
     );
   };
 
+  const DetailRow = ({ label, value }: { label: string; value: string }) => (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value || "—"}</Text>
+    </View>
+  );
+
   const openSheet = () => {
     setPaymentPreview(true);
     Animated.spring(slideAnimation, {
@@ -147,13 +229,6 @@ export default function RegistrantDetails() {
     }).start(() => setPaymentPreview(false));
   };
 
-  const DetailRow = ({ label, value }: { label: string; value: string }) => (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value || "—"}</Text>
-    </View>
-  );
-
   const handleApprove = () => {
     Alert.alert(
       "Approve Enrollment",
@@ -163,25 +238,74 @@ export default function RegistrantDetails() {
         {
           text: "Approve",
           onPress: async () => {
-            const v = Array.isArray(enrollment.verification)
-              ? enrollment.verification[0]
-              : enrollment.verification;
+            setApproveLoading(true);
+            try {
+              const v = Array.isArray(enrollment.verification)
+                ? enrollment.verification[0]
+                : enrollment.verification;
 
-            const { error } = await supabase
-              .from("verification")
-              .update({
-                verificationStatus: true,
-                lastVerificationDate: new Date().toISOString(),
-              })
-              .eq("verification_id", v?.verification_id);
+              const { error: verifyError } = await supabase
+                .from("verification")
+                .update({
+                  verificationStatus: true,
+                  lastVerificationDate: new Date().toISOString(),
+                })
+                .eq("verification_id", v?.verification_id);
 
-            if (error) {
-              Alert.alert("Error", error.message);
-              return;
+              if (verifyError) throw new Error(verifyError.message);
+
+              const { data: existingCode } = await supabase
+                .from("activation_codes")
+                .select("code")
+                .eq("enrollment_id", enrollment.enrollment_id)
+                .eq("is_used", false)
+                .gt("expires_at", new Date().toISOString())
+                .maybeSingle();
+
+              let code: string;
+
+              if (existingCode) {
+                code = existingCode.code;
+              } else {
+                code = generateCode();
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + 7);
+
+                const { error: codeError } = await supabase
+                  .from("activation_codes")
+                  .insert({
+                    code,
+                    student_id: enrollment.student_id,
+                    enrollment_id: enrollment.enrollment_id,
+                    is_used: false,
+                    expires_at: expiresAt.toISOString(),
+                  });
+
+                if (codeError) throw new Error(codeError.message);
+              }
+
+              const studentName = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
+              const sent = await sendActivationEmail(
+                enrollment.student.email,
+                enrollment.student.firstName,
+                code,
+              );
+
+              setGeneratedCode(code);
+              setEmailSent(sent);
+              setCodeStudent({
+                name: studentName,
+                email: enrollment.student.email,
+              });
+              setCodeModal(true);
+
+              await refreshData();
+              await fetchEnrollmentDetails();
+            } catch (err: any) {
+              Alert.alert("Error", err.message ?? "Something went wrong.");
+            } finally {
+              setApproveLoading(false);
             }
-            await refreshData();
-            Alert.alert("Approved!", "Enrollment has been approved.");
-            router.back();
           },
         },
       ],
@@ -225,6 +349,22 @@ export default function RegistrantDetails() {
     ]);
   };
 
+  const handleResendEmail = async () => {
+    if (!codeStudent) return;
+    const sent = await sendActivationEmail(
+      codeStudent.email,
+      codeStudent.name.split(" ")[0],
+      generatedCode,
+    );
+    setEmailSent(sent);
+    Alert.alert(
+      sent ? "Email Sent" : "Email Failed",
+      sent
+        ? `Activation code resent to ${codeStudent.email}`
+        : "Could not send email. Please share the code manually.",
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -239,13 +379,24 @@ export default function RegistrantDetails() {
     : enrollment?.paymentDetails;
   const proofUrl = payment?.proofOfPaymentUrl;
 
+  const verification = Array.isArray(enrollment?.verification)
+    ? enrollment.verification[0]
+    : enrollment?.verification;
+  const isAlreadyApproved = verification?.verificationStatus === true;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pending</Text>
+        <Text style={styles.headerTitle}>
+          {isAlreadyApproved
+            ? "Approved"
+            : verification?.verificationNotes
+              ? "Rejected"
+              : "Pending"}
+        </Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -322,38 +473,156 @@ export default function RegistrantDetails() {
           <Ionicons name="chevron-forward" size={20} color="#555" />
         </TouchableOpacity>
 
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.approveBtn} onPress={handleApprove}>
-            <Text style={styles.buttonText}>Approve</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.rejectBtn}
-            onPress={() => setShowRemarks(!showRemarks)}
-          >
-            <Text style={styles.buttonText}>Reject</Text>
-          </TouchableOpacity>
-        </View>
-
-        {showRemarks && (
+        {!isAlreadyApproved && !verification?.verificationNotes && (
           <>
-            <TextInput
-              style={styles.remarksInput}
-              placeholder="Enter reason for rejection..."
-              value={remarks}
-              onChangeText={setRemarks}
-              multiline
-            />
-            <TouchableOpacity
-              style={styles.confirmRejectBtn}
-              onPress={handleReject}
-            >
-              <Text style={styles.buttonText}>Confirm Rejection</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[styles.approveBtn, approveLoading && { opacity: 0.7 }]}
+                onPress={handleApprove}
+                disabled={approveLoading}
+              >
+                {approveLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Approve</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rejectBtn}
+                onPress={() => setShowRemarks(!showRemarks)}
+              >
+                <Text style={styles.buttonText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showRemarks && (
+              <>
+                <TextInput
+                  style={styles.remarksInput}
+                  placeholder="Enter reason for rejection..."
+                  value={remarks}
+                  onChangeText={setRemarks}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={styles.confirmRejectBtn}
+                  onPress={handleReject}
+                >
+                  <Text style={styles.buttonText}>Confirm Rejection</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </>
+        )}
+
+        {isAlreadyApproved && (
+          <TouchableOpacity
+            style={styles.viewCodeBtn}
+            onPress={async () => {
+              const { data } = await supabase
+                .from("activation_codes")
+                .select("code, is_used, expires_at")
+                .eq("enrollment_id", enrollment.enrollment_id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (!data) {
+                Alert.alert("No Code", "No activation code found.");
+                return;
+              }
+              if (data.is_used) {
+                Alert.alert(
+                  "Account Activated",
+                  "This student has already activated their account.",
+                );
+                return;
+              }
+              if (new Date(data.expires_at) < new Date()) {
+                Alert.alert("Code Expired", "The activation code has expired.");
+                return;
+              }
+              setGeneratedCode(data.code);
+              setEmailSent(null);
+              setCodeStudent({
+                name: `${student?.firstName} ${student?.lastName}`,
+                email: student?.email,
+              });
+              setCodeModal(true);
+            }}
+          >
+            <Ionicons name="key-outline" size={18} color="#2F459B" />
+            <Text style={styles.viewCodeBtnText}>View Activation Code</Text>
+          </TouchableOpacity>
+        )}
+
+        {!isAlreadyApproved && verification?.verificationNotes && (
+          <View style={styles.rejectedSection}>
+            <View style={styles.rejectionNotesBox}>
+              <View style={styles.rejectionNotesHeader}>
+                <Text style={styles.rejectionNotesTitle}>Rejection Notes:</Text>
+              </View>
+              <Text style={styles.rejectionNotesText}>
+                {verification.verificationNotes}
+              </Text>
+            </View>
+
+            <View style={styles.reenrollCard}>
+              <View style={styles.reenrollInfo}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reenrollTitle}>Allow Re-enrollment?</Text>
+                  <Text style={styles.reenrollSubtitle}>
+                    Student can re-enroll using the same email address
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.toggleBtn,
+                  allowReenrollment && styles.toggleBtnActive,
+                  toggleLoading && { opacity: 0.6 },
+                ]}
+                onPress={handleToggleReenrollment}
+                disabled={toggleLoading}
+              >
+                {toggleLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <View
+                      style={[
+                        styles.toggleCircle,
+                        allowReenrollment && styles.toggleCircleActive,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.toggleLabel,
+                        allowReenrollment && styles.toggleLabelActive,
+                      ]}
+                    >
+                      {allowReenrollment ? "ON" : "OFF"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {allowReenrollment && (
+              <View style={styles.reenrollAllowedBanner}>
+                <Ionicons name="checkmark-circle" size={16} color="#27ae60" />
+                <Text style={styles.reenrollAllowedText}>
+                  Student is now allowed to re-enroll with the same email.
+                </Text>
+              </View>
+            )}
+          </View>
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
       <Modal
         visible={paymentPreview}
         transparent
@@ -365,7 +634,6 @@ export default function RegistrantDetails() {
           activeOpacity={1}
           onPress={closeSheet}
         />
-
         <Animated.View
           style={[
             styles.bottomSheet,
@@ -373,14 +641,12 @@ export default function RegistrantDetails() {
           ]}
         >
           <View style={styles.sheetHandle} />
-
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Proof of Payment</Text>
             <TouchableOpacity onPress={closeSheet}>
               <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
           </View>
-
           {proofUrl ? (
             <Image
               source={{ uri: proofUrl }}
@@ -395,7 +661,6 @@ export default function RegistrantDetails() {
               </Text>
             </View>
           )}
-
           <TouchableOpacity
             style={styles.openBrowserBtn}
             onPress={() => proofUrl && WebBrowser.openBrowserAsync(proofUrl)}
@@ -404,6 +669,73 @@ export default function RegistrantDetails() {
             <Text style={styles.openBrowserText}>Open Full Size</Text>
           </TouchableOpacity>
         </Animated.View>
+      </Modal>
+
+      <Modal visible={codeModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="checkmark-circle" size={40} color="#27ae60" />
+              <Text style={styles.modalTitle}>Student Approved!</Text>
+            </View>
+
+            <Text style={styles.modalSubtitle}>Activation code for:</Text>
+            <Text style={styles.modalStudentName}>{codeStudent?.name}</Text>
+            <Text style={styles.modalEmail}>{codeStudent?.email}</Text>
+
+            {emailSent === true && (
+              <View style={styles.emailSuccessBanner}>
+                <Ionicons name="mail" size={16} color="#27ae60" />
+                <Text style={styles.emailSuccessText}>
+                  Email sent successfully to student
+                </Text>
+              </View>
+            )}
+            {emailSent === false && (
+              <View style={styles.emailFailBanner}>
+                <Ionicons name="mail-unread" size={16} color="#E74C3C" />
+                <Text style={styles.emailFailText}>
+                  Email failed — share code manually
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.codeDisplay}>
+              {generatedCode.split("").map((digit, i) => (
+                <View key={i} style={styles.codeDigitBox}>
+                  <Text style={styles.codeDigit}>{digit}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.codeExpiry}>
+              Expires in 7 days · One-time use only
+            </Text>
+
+            <TouchableOpacity
+              style={styles.resendBtn}
+              onPress={handleResendEmail}
+            >
+              <Ionicons name="send-outline" size={16} color="#2F459B" />
+              <Text style={styles.resendBtnText}>Resend Email</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.codeInstruction}>
+              If the student doesn't receive the email, share the code above
+              directly via SMS or messaging app.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => {
+                setCodeModal(false);
+                setEmailSent(null);
+              }}
+            >
+              <Text style={styles.modalCloseBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -491,12 +823,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonText: { fontWeight: "bold", color: "white" },
-  remarksLink: {
-    color: "#2F459B",
-    fontWeight: "bold",
-    marginTop: 15,
-    textDecorationLine: "underline",
-  },
   remarksInput: {
     borderWidth: 1,
     borderColor: "#CCC",
@@ -513,10 +839,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  viewCodeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: "#2F459B",
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
   },
+  viewCodeBtnText: {
+    color: "#2F459B",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
   bottomSheet: {
     position: "absolute",
     bottom: 0,
@@ -542,11 +882,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2F459B",
-  },
+  sheetTitle: { fontSize: 16, fontWeight: "bold", color: "#2F459B" },
   proofImage: {
     width: "100%",
     height: 350,
@@ -554,15 +890,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  noProofContainer: {
-    alignItems: "center",
-    padding: 40,
-  },
-  noProofText: {
-    color: "#999",
-    marginTop: 10,
-    fontSize: 13,
-  },
+  noProofContainer: { alignItems: "center", padding: 40 },
+  noProofText: { color: "#999", marginTop: 10, fontSize: 13 },
   openBrowserBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -573,9 +902,170 @@ const styles = StyleSheet.create({
     marginTop: 15,
     gap: 8,
   },
-  openBrowserText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
+  openBrowserText: { color: "white", fontWeight: "600", fontSize: 14 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
   },
+  modalCard: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+  },
+  modalHeader: { alignItems: "center", marginBottom: 12 },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#27ae60",
+    marginTop: 8,
+  },
+  modalSubtitle: { fontSize: 12, color: "#777", marginBottom: 4 },
+  modalStudentName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#0D2A94",
+    marginBottom: 2,
+  },
+  modalEmail: { fontSize: 12, color: "#777", marginBottom: 12 },
+  emailSuccessBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0fff4",
+    borderWidth: 1,
+    borderColor: "#27ae60",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginBottom: 12,
+    width: "100%",
+  },
+  emailSuccessText: { fontSize: 12, color: "#27ae60", fontWeight: "600" },
+  emailFailBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff5f5",
+    borderWidth: 1,
+    borderColor: "#E74C3C",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginBottom: 12,
+    width: "100%",
+  },
+  emailFailText: { fontSize: 12, color: "#E74C3C", fontWeight: "600" },
+  codeDisplay: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  codeDigitBox: {
+    width: 40,
+    height: 50,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#0D2A94",
+    backgroundColor: "#F0F4FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  codeDigit: { fontSize: 22, fontWeight: "bold", color: "#0D2A94" },
+  codeExpiry: {
+    fontSize: 11,
+    color: "#E74C3C",
+    marginBottom: 12,
+    fontStyle: "italic",
+  },
+  resendBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2F459B",
+    gap: 6,
+    marginBottom: 12,
+  },
+  resendBtnText: { fontSize: 13, color: "#2F459B", fontWeight: "600" },
+  codeInstruction: {
+    fontSize: 11,
+    color: "#777",
+    textAlign: "center",
+    lineHeight: 16,
+    marginBottom: 16,
+  },
+  modalCloseBtn: {
+    backgroundColor: "#0D2A94",
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 10,
+    width: "100%",
+    alignItems: "center",
+  },
+  modalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 15 },
+  rejectedSection: { marginTop: 20 },
+  rejectionNotesBox: {
+    backgroundColor: "#fff5f5",
+    borderWidth: 1,
+    borderColor: "#e74c3c",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+  },
+  rejectionNotesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  rejectionNotesTitle: { fontSize: 14, fontWeight: "bold", color: "#e74c3c" },
+  rejectionNotesText: { fontSize: 13, color: "#333", lineHeight: 18 },
+  reenrollCard: {
+    backgroundColor: "#F8F9FA",
+    borderWidth: 1,
+    borderColor: "#DCDFE3",
+    borderRadius: 10,
+    padding: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  reenrollInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+  reenrollTitle: { fontSize: 14, fontWeight: "bold", color: "#0D2A94" },
+  reenrollSubtitle: { fontSize: 11, color: "#777", marginTop: 2 },
+  toggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#CCC",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    minWidth: 70,
+    justifyContent: "center",
+  },
+  toggleBtnActive: { backgroundColor: "#27ae60" },
+  toggleCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "white",
+  },
+  toggleCircleActive: { backgroundColor: "white" },
+  toggleLabel: { fontSize: 12, fontWeight: "bold", color: "white" },
+  toggleLabelActive: { color: "white" },
+  reenrollAllowedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0fff4",
+    borderWidth: 1,
+    borderColor: "#27ae60",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+  },
+  reenrollAllowedText: { fontSize: 12, color: "#27ae60", flex: 1 },
 });

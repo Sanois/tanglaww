@@ -86,6 +86,13 @@ export default function AdminApproval() {
     return v?.verificationStatus === true;
   });
 
+  const rejected = auditRequests.filter((e: any) => {
+    const v = Array.isArray(e.verification)
+      ? e.verification[0]
+      : e.verification;
+    return v?.verificationStatus === false && v?.verificationNotes;
+  });
+
   const handleApprove = async (enrollment: any) => {
     console.log("handleApprove called");
     console.log("Full enrollment object:", JSON.stringify(enrollment, null, 2));
@@ -368,6 +375,19 @@ export default function AdminApproval() {
             <Text style={styles.emptyText}>No approved enrollments</Text>
           ) : (
             approved.map((e) => (
+              <ApprovalCard
+                key={e.enrollment_id}
+                enrollment={e}
+                showActions={false}
+              />
+            ))
+          )}
+
+          <Text style={styles.sectionTitle}>Rejected ({rejected.length})</Text>
+          {rejected.length === 0 ? (
+            <Text style={styles.emptyText}>No rejected enrollments</Text>
+          ) : (
+            rejected.map((e) => (
               <ApprovalCard
                 key={e.enrollment_id}
                 enrollment={e}
