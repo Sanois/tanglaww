@@ -179,7 +179,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
                     type: "success",
                     text1: "You have logged out successfully",
                     position: "bottom",
-                    visibilityTime: 3500,
+                    visibilityTime: 4000,
                   });
                   router.replace("/login");
                 },
