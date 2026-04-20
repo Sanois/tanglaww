@@ -7,6 +7,7 @@ import {
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Image,
   Dimensions,
   Modal,
   Platform,
@@ -21,6 +22,7 @@ import {
 import HamburgerMenu from "./hamburger";
 
 const { width } = Dimensions.get("window");
+const dashboardImage = require("../assets/images/dashboard-image.png");
 
 export default function Homepage() {
   const router = useRouter();
@@ -103,9 +105,25 @@ export default function Homepage() {
         </Text>
 
         <View style={styles.carouselContainer}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={50} color="#BDC3C7" />
-          </View>
+           <View
+  style={{
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    overflow: "hidden",
+  }}
+>
+  <Image
+    source={dashboardImage}
+    style={{
+      width: "150%",      
+      height: "100%",
+      marginLeft: -10,    
+      resizeMode: "cover",
+      borderRadius: 12,
+    }}
+  />
+</View>
           <View style={styles.pagination}>
             <View style={[styles.dot, styles.activeDot]} />
             <View style={styles.dot} />

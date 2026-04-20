@@ -148,6 +148,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       "/welcome",
       "/admin/signin",
       "/succes",
+      "/resetpass",
+      "/forgotpass",
     ].includes(pathname);
 
     const inAdminGroup = pathname.startsWith("/admin");
@@ -195,6 +197,8 @@ export default function RootLayout() {
           <Stack.Screen name="admin" />
           <Stack.Screen name="registrant" />
           <Stack.Screen name="materials" />
+          <Stack.Screen name="resetpass" />
+          <Stack.Screen name="forgotpass" />
         </Stack>
       </AuthGate>
       <Toast />

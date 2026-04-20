@@ -6,18 +6,18 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Linking,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import AdminHamburger from "./hamburger";
 
-const { width } = Dimensions.get("window");
+const { width } = useWindowDimensions();
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
   "January",

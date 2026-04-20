@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,8 @@ import {
   View,
 } from "react-native";
 import AdminHamburger from "./hamburger";
+
+const dashboardImage = require("../../assets/images/dashboard-image.png");
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -97,12 +100,18 @@ export default function AdminDashboard() {
         </Text>
 
         <View style={styles.heroCard}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={40} color="#CCC" />
+          <Image
+            source={dashboardImage}
+            style={{
+              width: "100%",
+              height: 200,
+              resizeMode: "cover", // or "cover"
+              borderRadius: 12,
+            }}
+          />
             <TouchableOpacity style={styles.editIconHero}>
               <Ionicons name="pencil-outline" size={16} color="black" />
             </TouchableOpacity>
-          </View>
           <View style={styles.paginationDots}>
             <View style={[styles.dot, styles.activeDot]} />
             <View style={styles.dot} />

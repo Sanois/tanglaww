@@ -277,130 +277,211 @@ export default function EnrollmentScreen() {
   const handleSubmit = async () => {
     if (loading) return;
     setLoading(true);
+
     try {
-      const { data: existingStudent } = await supabase
-        .from("student")
-        .select("id")
-        .eq("email", dataTypes.email.trim().toLowerCase())
-        .maybeSingle();
+        // Step 1 — Check if student already exists
+        const { data: existingStudent } = await supabase
+            .from('student')
+            .select('id')
+            .eq('email', dataTypes.email.trim().toLowerCase())
+            .maybeSingle();
 
-      if (existingStudent) {
-        const { data: existingEnrollment } = await supabase
-          .from("enrollment")
-          .select(
-            `
-            enrollment_id,
-            verification!enrollment_verification_id_fkey (
-                allow_reenrollment, verificationStatus
-            )
-        `,
-          )
-          .eq("student_id", existingStudent.id)
-          .single();
+        let studentData;
 
-        const v = Array.isArray(existingEnrollment?.verification)
-          ? existingEnrollment?.verification[0]
-          : existingEnrollment?.verification;
+        if (existingStudent) {
+            // Check if re-enrollment is allowed before proceeding
+            const { data: existingEnrollmentCheck } = await supabase
+                .from('enrollment')
+                .select(`
+                    enrollment_id,
+                    verification!enrollment_verification_id_fkey (
+                        allow_reenrollment, verificationStatus
+                    )
+                `)
+                .eq('student_id', existingStudent.id)
+                .maybeSingle();
 
-        if (!v?.allow_reenrollment) {
-          Alert.alert(
-            "Email Already Registered",
-            "An account with this email already exists. If you were rejected and want to re-enroll, please contact the admin first.",
-          );
-          setLoading(false);
-          return;
+            const v = Array.isArray(existingEnrollmentCheck?.verification)
+                ? existingEnrollmentCheck?.verification[0]
+                : existingEnrollmentCheck?.verification;
+
+            if (!v?.allow_reenrollment) {
+                Alert.alert(
+                    'Email Already Registered',
+                    'An account with this email already exists. If you were rejected and want to re-enroll, please contact the admin first.'
+                );
+                setLoading(false);
+                return;
+            }
+
+            // Re-enrollment allowed — update student record
+            const { data: updatedStudent, error: updateError } = await supabase
+                .from('student')
+                .update({
+                    firstName: dataTypes.firstName,
+                    lastName: dataTypes.lastName,
+                    middleName: dataTypes.middleName,
+                    bachelorsDegree: dataTypes.bachelorsDegree,
+                    majorshipTaken: dataTypes.specialization,
+                    lastSchoolAttended: dataTypes.lastSchool,
+                    province: dataTypes.province,
+                    dataprivacyconsent: new Date().toISOString(),
+                })
+                .eq('id', existingStudent.id)
+                .select()
+                .single();
+
+            if (updateError) throw new Error(updateError.message);
+            studentData = updatedStudent;
+
+        } else {
+            // New student — insert
+            const { data: newStudent, error: studentError } = await supabase
+                .from('student')
+                .insert({
+                    firstName: dataTypes.firstName,
+                    lastName: dataTypes.lastName,
+                    middleName: dataTypes.middleName,
+                    email: dataTypes.email,
+                    bachelorsDegree: dataTypes.bachelorsDegree,
+                    majorshipTaken: dataTypes.specialization,
+                    lastSchoolAttended: dataTypes.lastSchool,
+                    province: dataTypes.province,
+                    dataprivacyconsent: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+            if (studentError) throw new Error(studentError.message);
+            studentData = newStudent;
         }
 
-        await supabase
-          .from("verification")
-          .update({
-            verificationStatus: false,
-            verificationNotes: null,
-            allow_reenrollment: false,
-            lastVerificationDate: null,
-          })
-          .eq("verification_id", existingEnrollment?.enrollment_id);
-      }
-      const { data: studentData, error: studentError } = await supabase
-        .from("student")
-        .insert({
-          firstName: dataTypes.firstName,
-          lastName: dataTypes.lastName,
-          middleName: dataTypes.middleName,
-          email: dataTypes.email,
-          bachelorsDegree: dataTypes.bachelorsDegree,
-          majorshipTaken: dataTypes.specialization,
-          lastSchoolAttended: dataTypes.lastSchool,
-          province: dataTypes.province,
-          dataprivacyconsent: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        // Step 2 — Upload proof of payment
+        const proofUrl = await uploadAttachment();
 
-      if (studentError) throw new Error(studentError.message);
+        // Step 3 — Check if enrollment already exists
+        const { data: existingEnrollment } = await supabase
+            .from('enrollment')
+            .select('enrollment_id, verification_id')
+            .eq('student_id', studentData.id)
+            .maybeSingle();
 
-      const proofUrl = await uploadAttachment();
+        let enrollmentData;
 
-      const { data: verificationData, error: verificationError } =
-        await supabase
-          .from("verification")
-          .insert({
-            verificationStatus: false,
-            verificationNotes: null,
-          })
-          .select()
-          .single();
+        if (existingEnrollment) {
+            // Update existing enrollment
+            const { data: updatedEnrollment, error: enrollmentError } = await supabase
+                .from('enrollment')
+                .update({
+                    curriculum_id: dataTypes.curriculumId,
+                    specialization_id: dataTypes.specializationId,
+                    typeOfTaker_id: dataTypes.takerTypeId,
+                    promo_id: dataTypes.promoId,
+                    enrollmentDate: new Date().toISOString(),
+                })
+                .eq('enrollment_id', existingEnrollment.enrollment_id)
+                .select()
+                .single();
 
-      if (verificationError) throw new Error(verificationError.message);
+            if (enrollmentError) throw new Error(enrollmentError.message);
+            enrollmentData = updatedEnrollment;
 
-      const { data: enrollmentData, error: enrollmentError } = await supabase
-        .from("enrollment")
-        .insert({
-          student_id: studentData.id,
-          curriculum_id: dataTypes.curriculumId,
-          specialization_id: dataTypes.specializationId,
-          typeOfTaker_id: dataTypes.takerTypeId,
-          promo_id: dataTypes.promoId,
-          verification_id: verificationData.verification_id,
-          enrollmentDate: new Date().toISOString(),
-        })
-        .select()
-        .single();
+            // Reset verification back to pending
+            await supabase
+                .from('verification')
+                .update({
+                    verificationStatus: false,
+                    verificationNotes: null,
+                    allow_reenrollment: false,
+                    lastVerificationDate: null,
+                })
+                .eq('verification_id', existingEnrollment.verification_id);
 
-      if (enrollmentError) throw new Error(enrollmentError.message);
+        } else {
+            // New enrollment — create verification first
+            const { data: verificationData, error: verificationError } = await supabase
+                .from('verification')
+                .insert({
+                    verificationStatus: false,
+                    verificationNotes: null,
+                })
+                .select()
+                .single();
 
-      const { error: updateVerifyError } = await supabase
-        .from("verification")
-        .update({ enrollment_id: enrollmentData.enrollment_id })
-        .eq("verification_id", verificationData.verification_id);
+            if (verificationError) throw new Error(verificationError.message);
 
-      if (updateVerifyError)
-        console.error("Verify update error:", updateVerifyError.message);
+            const { data: newEnrollment, error: enrollmentError } = await supabase
+                .from('enrollment')
+                .insert({
+                    student_id: studentData.id,
+                    curriculum_id: dataTypes.curriculumId,
+                    specialization_id: dataTypes.specializationId,
+                    typeOfTaker_id: dataTypes.takerTypeId,
+                    promo_id: dataTypes.promoId,
+                    verification_id: verificationData.verification_id,
+                    enrollmentDate: new Date().toISOString(),
+                })
+                .select()
+                .single();
 
-      const { error: paymentError } = await supabase
-        .from("paymentDetails")
-        .insert({
-          enrollment_id: enrollmentData.enrollment_id,
-          paymentChannel_id: dataTypes.paymentChannelId,
-          referenceNumber: dataTypes.referenceNumber,
-          amountTransferred: parseFloat(dataTypes.amountTransferred),
-          dateOfPayment: new Date().toISOString(),
-          proofOfPaymentUrl: proofUrl,
-          agreedToPaymentNotice: dataTypes.paymentNoticeAgreement,
-        });
+            if (enrollmentError) throw new Error(enrollmentError.message);
+            enrollmentData = newEnrollment;
 
-      if (paymentError) throw new Error(paymentError.message);
+            // Link verification to enrollment
+            await supabase
+                .from('verification')
+                .update({ enrollment_id: enrollmentData.enrollment_id })
+                .eq('verification_id', verificationData.verification_id);
+        }
 
-      setIsRegistrationComplete(true);
+        // Step 4 — Handle payment details
+        const { data: existingPayment } = await supabase
+            .from('paymentDetails')
+            .select('paymentDetails_id')
+            .eq('enrollment_id', enrollmentData.enrollment_id)
+            .maybeSingle();
+
+        if (existingPayment) {
+            const { error: paymentError } = await supabase
+                .from('paymentDetails')
+                .update({
+                    paymentChannel_id: dataTypes.paymentChannelId,
+                    referenceNumber: dataTypes.referenceNumber,
+                    amountTransferred: parseFloat(dataTypes.amountTransferred),
+                    dateOfPayment: new Date().toISOString(),
+                    proofOfPaymentUrl: proofUrl,
+                    agreedToPaymentNotice: dataTypes.paymentNoticeAgreement,
+                })
+                .eq('paymentDetails_id', existingPayment.paymentDetails_id);
+
+            if (paymentError) throw new Error(paymentError.message);
+        } else {
+            const { error: paymentError } = await supabase
+                .from('paymentDetails')
+                .insert({
+                    enrollment_id: enrollmentData.enrollment_id,
+                    paymentChannel_id: dataTypes.paymentChannelId,
+                    referenceNumber: dataTypes.referenceNumber,
+                    amountTransferred: parseFloat(dataTypes.amountTransferred),
+                    dateOfPayment: new Date().toISOString(),
+                    proofOfPaymentUrl: proofUrl,
+                    agreedToPaymentNotice: dataTypes.paymentNoticeAgreement,
+                });
+
+            if (paymentError) throw new Error(paymentError.message);
+        }
+
+        setIsRegistrationComplete(true);
+
     } catch (err: any) {
-      Alert.alert(
-        "Submission Failed",
-        err.message ?? "Something went wrong. Please try again.",
-      );
+        Alert.alert(
+            'Submission Failed',
+            err.message ?? 'Something went wrong. Please try again.'
+        );
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const handleContinue = () => {
     const stepErrors = validateStep(step, dataTypes);

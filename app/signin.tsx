@@ -142,7 +142,7 @@ export default function SignInScreen() {
 
           <TouchableOpacity
             style={{ alignSelf: "flex-end", marginTop: 5 }}
-            onPress={() => router.push("/newpass")}
+            onPress={() => router.push("/forgotpass")}
           >
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
