@@ -1,7 +1,10 @@
+import { generateSessionToken, registerSession } from "@/lib/session";
+import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -9,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -16,25 +20,76 @@ export default function SignInScreen() {
   const [pass, setPassword] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleQRCodePress = () => {
     router.push("/scan-qr");
   };
 
-  const handleSignIn = () => {
-    const errors: string[] = [];
+  const handleSignIn = async () => {
+    const newErrors: string[] = [];
     if (!email.trim() || !pass.trim())
-      errors.push("Kindly fill in all the necessary information.");
+      newErrors.push("Kindly fill in all the necessary information.");
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      errors.push("Please enter a valid email address.");
+      newErrors.push("Please enter a valid email address.");
 
-    if (errors.length > 0) {
-      setErrors(errors);
+    if (newErrors.length > 0) {
+      setErrors(newErrors);
       return;
     }
     setErrors([]);
-    // This navigates to your main student success screen
-    router.replace("/succes");
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass,
+      });
+
+      if (error) {
+        setErrors([error.message]);
+        return;
+      }
+
+      const { data: admin } = await supabase
+        .from("admin")
+        .select("admin_id")
+        .eq("admin_id", data.user.id)
+        .single();
+
+      if (admin) {
+        await supabase.auth.signOut();
+        setErrors(["Admins must use the Admin Sign In page."]);
+        return;
+      }
+
+      const { data: student, error: studentError } = await supabase
+        .from("student")
+        .select("id")
+        .eq("email", email.trim().toLowerCase())
+        .single();
+
+      if (studentError || !student) {
+        await supabase.auth.signOut();
+        setErrors(["No student account found."]);
+        return;
+      }
+
+      const token = await generateSessionToken();
+      await registerSession(student.id, token);
+
+      Toast.show({
+        type: "success",
+        text1: "You have successfuly signed in!",
+        position: "bottom",
+        visibilityTime: 3500,
+      });
+      router.replace("/homepage");
+    } catch (err: any) {
+      setErrors([err.message ?? "Something went wrong."]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -85,7 +140,10 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={{ alignSelf: "flex-end", marginTop: 5 }}>
+          <TouchableOpacity
+            style={{ alignSelf: "flex-end", marginTop: 5 }}
+            onPress={() => router.push("/forgotpass")}
+          >
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
@@ -107,8 +165,16 @@ export default function SignInScreen() {
             </View>
           )}
 
-          <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn}>
-            <Text style={styles.signInText}>Sign In</Text>
+          <TouchableOpacity
+            style={[styles.signInBtn, loading && { opacity: 0.7 }]}
+            onPress={handleSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.signInText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.dividerRow}>
@@ -137,8 +203,9 @@ export default function SignInScreen() {
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.footerLabel}>For Instructors</Text>
-            {/* Navigates to the Admin Sign In page */}
-            <TouchableOpacity onPress={() => router.push("/admin" as any)}>
+            <TouchableOpacity
+              onPress={() => router.push("/admin/signin" as any)}
+            >
               <Text style={styles.footerLinkYellow}>Admin Sign in</Text>
             </TouchableOpacity>
           </View>

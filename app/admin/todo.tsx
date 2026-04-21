@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,11 +15,11 @@ import {
   View,
 } from "react-native";
 
-export default function AddTodoScreen() {
+export default function AdminTodo() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [duedate, setDueDate] = useState<Date | null>(null);
   const [datePicker, setDatePicker] = useState(false);
   const [timePicker, setTimePicker] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,27 +31,17 @@ export default function AddTodoScreen() {
     }
 
     setLoading(true);
-
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
+      if (!user) throw new Error("Not logged in.");
 
-      const { data: student } = await supabase
-        .from("student")
-        .select("id")
-        .eq("email", user.email)
-        .single();
-
-      if (!student) throw new Error("Student not found.");
-
-      const { error } = await supabase.from("to_do").insert({
-        student_id: student.id,
+      const { error } = await supabase.from("admin_todo").insert({
+        admin_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
-        dueDate: dueDate ? dueDate.toISOString() : null,
-        isCompleted: false,
+        duedate: duedate ? duedate.toISOString() : null,
       });
 
       if (error) throw new Error(error.message);
@@ -65,16 +55,16 @@ export default function AddTodoScreen() {
     }
   };
 
-  const formattedDate = dueDate
-    ? dueDate.toLocaleDateString("en-US", {
+  const formattedDate = duedate
+    ? duedate.toLocaleDateString("en-US", {
         month: "2-digit",
         day: "2-digit",
         year: "numeric",
       })
     : "";
 
-  const formattedTime = dueDate
-    ? dueDate.toLocaleTimeString("en-US", {
+  const formattedTime = duedate
+    ? duedate.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -140,13 +130,13 @@ export default function AddTodoScreen() {
 
         {datePicker && (
           <DateTimePicker
-            value={dueDate ?? new Date()}
+            value={duedate ?? new Date()}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={(event, date) => {
               setDatePicker(false);
               if (date) {
-                const updated = dueDate ? new Date(dueDate) : new Date();
+                const updated = duedate ? new Date(duedate) : new Date();
                 updated.setFullYear(
                   date.getFullYear(),
                   date.getMonth(),
@@ -160,13 +150,13 @@ export default function AddTodoScreen() {
 
         {timePicker && (
           <DateTimePicker
-            value={dueDate ?? new Date()}
+            value={duedate ?? new Date()}
             mode="time"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={(event, date) => {
               setTimePicker(false);
               if (date) {
-                const updated = dueDate ? new Date(dueDate) : new Date();
+                const updated = duedate ? new Date(duedate) : new Date();
                 updated.setHours(date.getHours(), date.getMinutes());
                 setDueDate(updated);
               }
@@ -205,40 +195,45 @@ export default function AddTodoScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
   header: {
-    backgroundColor: "#0D2A94",
-    height: 60,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    padding: 20,
+    backgroundColor: "#FFD75E",
   },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
-  form: { padding: 25 },
+  headerTitle: { fontSize: 18, fontWeight: "bold" },
+  form: { padding: 20 },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: "bold", color: "#555", marginBottom: 8 },
+  label: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#2F459B",
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#BDC3C7",
+    borderColor: "#EEE",
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
+    marginBottom: 20,
+    fontSize: 16,
   },
   inputWithIcon: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#BDC3C7",
+    borderColor: "#EEE",
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 48,
+    marginBottom: 20,
   },
   saveButton: {
-    backgroundColor: "#0D2A94",
+    backgroundColor: "#2F459B",
+    padding: 15,
     borderRadius: 8,
-    height: 50,
-    justifyContent: "center",
     alignItems: "center",
-    marginTop: 40,
+    marginTop: 20,
   },
   saveButtonText: { color: "white", fontWeight: "bold", fontSize: 16 },
 });

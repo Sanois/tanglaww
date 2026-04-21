@@ -1,8 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
+  Image,
   ImageBackground,
   SafeAreaView,
   ScrollView,
@@ -12,35 +18,47 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { supabase } from "../lib/supabase";
 
 const { width } = Dimensions.get("window");
 
 const headerBg = require("../assets/images/header.png");
 
 interface dataTypes {
-  privacyAgreement: boolean | null; //for step1 - data priv notice
-  curriculum: string | null; //for step2 - program & curriculum details
+  privacyAgreement: boolean | null;
+  curriculum: string | null;
+  curriculumId: number | null;
   specialization: string;
+  specializationId: number | null;
   takerType: string | null;
-  firstName: string; //for step3 - personal info
+  takerTypeId: number | null;
+  firstName: string;
   middleName: string;
   lastName: string;
   email: string;
   bachelorsDegree: string;
   lastSchool: string;
   province: string;
-  promo: string; //for step4 - promotions & payment
-  paymentMethod: string;
+  promo: string;
+  promoId: number | null;
+  paymentChannel: string;
+  paymentChannelId: number | null;
   referenceNumber: string;
+  amountTransferred: string;
   paymentNoticeAgreement: boolean;
+  attachmentUri: string | null;
+  attachmentName: string | null;
+  attachmentType: string | null;
 }
 
-//initialize values for data preservation incase of misclick back nav
 const defaultValues: dataTypes = {
   privacyAgreement: null,
   curriculum: null,
+  curriculumId: null,
   specialization: "",
+  specializationId: null,
   takerType: null,
+  takerTypeId: null,
   firstName: "",
   middleName: "",
   lastName: "",
@@ -49,12 +67,17 @@ const defaultValues: dataTypes = {
   lastSchool: "",
   province: "",
   promo: "",
-  paymentMethod: "",
+  promoId: null,
+  paymentChannel: "",
+  paymentChannelId: null,
   referenceNumber: "",
+  amountTransferred: "",
   paymentNoticeAgreement: false,
+  attachmentUri: null,
+  attachmentName: null,
+  attachmentType: null,
 };
 
-//input validation per step
 function validateStep(step: number, form: dataTypes): string[] {
   const errors: string[] = [];
 
@@ -68,7 +91,8 @@ function validateStep(step: number, form: dataTypes): string[] {
   }
 
   if (step === 2) {
-    const isEmpty = !form.curriculum || !form.specialization || !form.takerType;
+    const isEmpty =
+      !form.curriculumId || !form.specializationId || !form.takerTypeId;
     if (isEmpty) errors.push("Please fill in all necessary informations.");
   }
 
@@ -86,8 +110,14 @@ function validateStep(step: number, form: dataTypes): string[] {
   }
 
   if (step === 4) {
-    const isEmpty = !form.paymentMethod.trim() || !form.referenceNumber.trim();
-    if (isEmpty) errors.push("Please fill in all necessary informations.");
+    if (
+      !form.paymentChannelId ||
+      !form.referenceNumber.trim() ||
+      !form.amountTransferred.trim()
+    )
+      errors.push("Please fill in all necessary informations.");
+    if (!form.attachmentUri)
+      errors.push("Please upload your payment receipt/verification.");
     if (!form.paymentNoticeAgreement)
       errors.push("Kindly acknowledge that all information is correct.");
   }
@@ -96,27 +126,16 @@ function validateStep(step: number, form: dataTypes): string[] {
 
 export default function EnrollmentScreen() {
   const router = useRouter();
-
   const [step, setStep] = useState(1);
   const [isRegistrationComplete, setIsRegistrationComplete] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-
+  const [loading, setLoading] = useState(false);
   const [dataTypes, setDataTypes] = useState<dataTypes>(defaultValues);
-
-  /*const [privacyAgree, setPrivacyAgree] = useState<boolean | null>(null);
-
-  const [curriculum, setCurriculum] = useState('BEEd');
-  const [majorship, setMajorship] = useState('Majorship');*/
   const [isMajorOpen, setIsMajorOpen] = useState(false);
-  //const [takerType, setTakerType] = useState('First time');
-
-  //const [promo, setPromo] = useState('Promo/discount');
   const [isPromoOpen, setIsPromoOpen] = useState(false);
-  //const [paymentMethod, setPaymentMethod] = useState('Select method');
   const [isMethodOpen, setIsMethodOpen] = useState(false);
-  //const [paymentNoticeAgree, setPaymentNoticeAgree] = useState(false);
+  const [receiptPreview, setReceiptPreview] = useState(false);
 
-  //summary section
   const [summary, setSummary] = useState<Record<string, boolean>>({
     program: false,
     personalInfo: false,
@@ -131,22 +150,328 @@ export default function EnrollmentScreen() {
     value: dataTypes[field],
   ) => setDataTypes((prev) => ({ ...prev, [key]: value }));
 
+  const typeOfTakerOptions = [
+    { id: 1, name: "First time" },
+    { id: 2, name: "Retaker" },
+  ];
+
+  const curriculumOptions = [
+    { id: 1, name: "BEEd" },
+    { id: 2, name: "BSEd" },
+  ];
+
   const majorshipOptions = [
-    "English",
-    "Filipino",
-    "Mathematics",
-    "Science",
-    "Social Values",
-    "Values Education",
+    { id: 1, name: "English" },
+    { id: 2, name: "Filipino" },
+    { id: 3, name: "Mathematics" },
+    { id: 4, name: "Science" },
+    { id: 5, name: "Social Values" },
+    { id: 6, name: "Values Education" },
   ];
+
   const promoOptions = [
-    "Advocacy Promo (BSEd and BEEd with specialization - 3500)",
-    "Advocacy Promo (BEEd - 2500)",
-    "Regular Rates (BSEd and BEEd with specialization - 5000)",
-    "Regular Rates (BEEd - 4000)",
-    "Summa Cum Laude",
+    {
+      id: 1,
+      name: "Advocacy Promo (BSEd and BEEd with specialization - 3500)",
+    },
+    { id: 2, name: "Advocacy Promo (BEEd - 2500)" },
+    { id: 3, name: "Regular Rates (BSEd and BEEd with specialization - 5000)" },
+    { id: 4, name: "Regular Rates (BEEd - 4000)" },
+    { id: 5, name: "Summa Cum Laude" },
   ];
-  const paymentMethods = ["GCash", "Maya", "Bank Transfer", "Cash", "Others"];
+
+  const paymentChannels = [
+    { id: 1, name: "GCash" },
+    { id: 2, name: "Maya" },
+    { id: 3, name: "Bank Transfer" },
+    { id: 4, name: "Cash" },
+    { id: 5, name: "Others" },
+  ];
+
+  const handleAttachment = () => {
+    Alert.alert("Upload Attachment", "Choose an option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          });
+          if (!result.canceled) {
+            const asset = result.assets[0];
+            setField("attachmentUri", asset.uri);
+            setField("attachmentName", asset.fileName ?? "photo.jpg");
+            setField("attachmentType", asset.mimeType ?? "image/jpeg");
+          }
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          });
+          if (!result.canceled) {
+            const asset = result.assets[0];
+            setField("attachmentUri", asset.uri);
+            setField("attachmentName", asset.fileName ?? "photo.jpg");
+            setField("attachmentType", asset.mimeType ?? "image/jpeg");
+          }
+        },
+      },
+      {
+        text: "File (PDF/Docs)",
+        onPress: async () => {
+          const result = await DocumentPicker.getDocumentAsync({
+            type: "*/*",
+            copyToCacheDirectory: true,
+          });
+          if (!result.canceled) {
+            const file = result.assets[0];
+            setField("attachmentUri", file.uri);
+            setField("attachmentName", file.name);
+            setField(
+              "attachmentType",
+              file.mimeType ?? "application/octet-stream",
+            );
+          }
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const uploadAttachment = async (): Promise<string | null> => {
+    if (!dataTypes.attachmentUri) return null;
+
+    const fileName = `${Date.now()}_${dataTypes.attachmentName}`;
+
+    try {
+      const response = await fetch(dataTypes.attachmentUri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const { data, error } = await supabase.storage
+        .from("receipts")
+        .upload(`payments/${fileName}`, arrayBuffer, {
+          contentType: dataTypes.attachmentType ?? "image/jpeg",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Upload error:", error.message);
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("receipts")
+        .getPublicUrl(`payments/${fileName}`);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error("Upload catch error:", err);
+      return null;
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      const { data: existingStudent } = await supabase
+        .from("student")
+        .select("id")
+        .eq("email", dataTypes.email.trim().toLowerCase())
+        .maybeSingle();
+
+      let studentData;
+
+      if (existingStudent) {
+        const { data: existingEnrollmentCheck } = await supabase
+          .from("enrollment")
+          .select(
+            `
+                    enrollment_id,
+                    verification!enrollment_verification_id_fkey (
+                        allow_reenrollment, verificationStatus
+                    )
+                `,
+          )
+          .eq("student_id", existingStudent.id)
+          .maybeSingle();
+
+        const v = Array.isArray(existingEnrollmentCheck?.verification)
+          ? existingEnrollmentCheck?.verification[0]
+          : existingEnrollmentCheck?.verification;
+
+        if (!v?.allow_reenrollment) {
+          Alert.alert(
+            "Email Already Registered",
+            "An account with this email already exists. If you were rejected and want to re-enroll, please contact the admin first.",
+          );
+          setLoading(false);
+          return;
+        }
+
+        const { data: updatedStudent, error: updateError } = await supabase
+          .from("student")
+          .update({
+            firstName: dataTypes.firstName,
+            lastName: dataTypes.lastName,
+            middleName: dataTypes.middleName,
+            bachelorsDegree: dataTypes.bachelorsDegree,
+            majorshipTaken: dataTypes.specialization,
+            lastSchoolAttended: dataTypes.lastSchool,
+            province: dataTypes.province,
+            dataprivacyconsent: new Date().toISOString(),
+          })
+          .eq("id", existingStudent.id)
+          .select()
+          .single();
+
+        if (updateError) throw new Error(updateError.message);
+        studentData = updatedStudent;
+      } else {
+        const { data: newStudent, error: studentError } = await supabase
+          .from("student")
+          .insert({
+            firstName: dataTypes.firstName,
+            lastName: dataTypes.lastName,
+            middleName: dataTypes.middleName,
+            email: dataTypes.email,
+            bachelorsDegree: dataTypes.bachelorsDegree,
+            majorshipTaken: dataTypes.specialization,
+            lastSchoolAttended: dataTypes.lastSchool,
+            province: dataTypes.province,
+            dataprivacyconsent: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (studentError) throw new Error(studentError.message);
+        studentData = newStudent;
+      }
+
+      const proofUrl = await uploadAttachment();
+
+      const { data: existingEnrollment } = await supabase
+        .from("enrollment")
+        .select("enrollment_id, verification_id")
+        .eq("student_id", studentData.id)
+        .maybeSingle();
+
+      let enrollmentData;
+
+      if (existingEnrollment) {
+        const { data: updatedEnrollment, error: enrollmentError } =
+          await supabase
+            .from("enrollment")
+            .update({
+              curriculum_id: dataTypes.curriculumId,
+              specialization_id: dataTypes.specializationId,
+              typeOfTaker_id: dataTypes.takerTypeId,
+              promo_id: dataTypes.promoId,
+              enrollmentDate: new Date().toISOString(),
+            })
+            .eq("enrollment_id", existingEnrollment.enrollment_id)
+            .select()
+            .single();
+
+        if (enrollmentError) throw new Error(enrollmentError.message);
+        enrollmentData = updatedEnrollment;
+
+        await supabase
+          .from("verification")
+          .update({
+            verificationStatus: false,
+            verificationNotes: null,
+            allow_reenrollment: false,
+            lastVerificationDate: null,
+          })
+          .eq("verification_id", existingEnrollment.verification_id);
+      } else {
+        const { data: verificationData, error: verificationError } =
+          await supabase
+            .from("verification")
+            .insert({
+              verificationStatus: false,
+              verificationNotes: null,
+            })
+            .select()
+            .single();
+
+        if (verificationError) throw new Error(verificationError.message);
+
+        const { data: newEnrollment, error: enrollmentError } = await supabase
+          .from("enrollment")
+          .insert({
+            student_id: studentData.id,
+            curriculum_id: dataTypes.curriculumId,
+            specialization_id: dataTypes.specializationId,
+            typeOfTaker_id: dataTypes.takerTypeId,
+            promo_id: dataTypes.promoId,
+            verification_id: verificationData.verification_id,
+            enrollmentDate: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (enrollmentError) throw new Error(enrollmentError.message);
+        enrollmentData = newEnrollment;
+
+        await supabase
+          .from("verification")
+          .update({ enrollment_id: enrollmentData.enrollment_id })
+          .eq("verification_id", verificationData.verification_id);
+      }
+
+      const { data: existingPayment } = await supabase
+        .from("paymentDetails")
+        .select("paymentDetails_id")
+        .eq("enrollment_id", enrollmentData.enrollment_id)
+        .maybeSingle();
+
+      if (existingPayment) {
+        const { error: paymentError } = await supabase
+          .from("paymentDetails")
+          .update({
+            paymentChannel_id: dataTypes.paymentChannelId,
+            referenceNumber: dataTypes.referenceNumber,
+            amountTransferred: parseFloat(dataTypes.amountTransferred),
+            dateOfPayment: new Date().toISOString(),
+            proofOfPaymentUrl: proofUrl,
+            agreedToPaymentNotice: dataTypes.paymentNoticeAgreement,
+          })
+          .eq("paymentDetails_id", existingPayment.paymentDetails_id);
+
+        if (paymentError) throw new Error(paymentError.message);
+      } else {
+        const { error: paymentError } = await supabase
+          .from("paymentDetails")
+          .insert({
+            enrollment_id: enrollmentData.enrollment_id,
+            paymentChannel_id: dataTypes.paymentChannelId,
+            referenceNumber: dataTypes.referenceNumber,
+            amountTransferred: parseFloat(dataTypes.amountTransferred),
+            dateOfPayment: new Date().toISOString(),
+            proofOfPaymentUrl: proofUrl,
+            agreedToPaymentNotice: dataTypes.paymentNoticeAgreement,
+          });
+
+        if (paymentError) throw new Error(paymentError.message);
+      }
+
+      setIsRegistrationComplete(true);
+    } catch (err: any) {
+      Alert.alert(
+        "Submission Failed",
+        err.message ?? "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleContinue = () => {
     const stepErrors = validateStep(step, dataTypes);
@@ -158,7 +483,7 @@ export default function EnrollmentScreen() {
     setErrors([]);
 
     if (step < 5) setStep(step + 1);
-    else setIsRegistrationComplete(true);
+    else handleSubmit();
   };
 
   const handleBack = () => {
@@ -387,96 +712,50 @@ export default function EnrollmentScreen() {
             <View style={styles.formBody}>
               {errorRender()}
               <Text style={styles.label}>Type of Taker:*</Text>
-              <View style={{ flexDirection: "row", marginBottom: 10 }}>
+              {typeOfTakerOptions.map((opt) => (
                 <TouchableOpacity
+                  key={opt.id}
                   style={styles.radioRow}
-                  onPress={() =>
-                    setField(
-                      "takerType",
-                      dataTypes.takerType === "First time"
-                        ? null
-                        : "First time",
-                    )
-                  }
+                  onPress={() => {
+                    setField("takerType", opt.name);
+                    setField("takerTypeId", opt.id);
+                  }}
                 >
                   <Ionicons
                     name={
-                      dataTypes.takerType === "First time"
+                      dataTypes.takerType === opt.name
                         ? "radio-button-on"
                         : "radio-button-off"
                     }
                     size={22}
                     color="#0D2A94"
                   />
-                  <Text style={styles.radioLabel}>First time</Text>
+                  <Text style={styles.radioLabel}>{opt.name}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.radioRow, { marginLeft: 20 }]}
-                  onPress={() =>
-                    setField(
-                      "takerType",
-                      dataTypes.takerType === "Retaker" ? null : "Retaker",
-                    )
-                  }
-                >
-                  <Ionicons
-                    name={
-                      dataTypes.takerType === "Retaker"
-                        ? "radio-button-on"
-                        : "radio-button-off"
-                    }
-                    size={22}
-                    color="#0D2A94"
-                  />
-                  <Text style={styles.radioLabel}>Retaker</Text>
-                </TouchableOpacity>
-              </View>
+              ))}
 
               <Text style={styles.label}>Curriculum:*</Text>
-              <TouchableOpacity
-                style={styles.radioRow}
-                onPress={() =>
-                  setField(
-                    "curriculum",
-                    dataTypes.curriculum === "BEEd" ? null : "BEEd",
-                  )
-                }
-              >
-                <Ionicons
-                  name={
-                    dataTypes.curriculum === "BEEd"
-                      ? "radio-button-on"
-                      : "radio-button-off"
-                  }
-                  size={22}
-                  color="#0D2A94"
-                />
-                <Text style={styles.radioLabel}>
-                  Bachelor of Elementary Education (BEEd)
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.radioRow}
-                onPress={() =>
-                  setField(
-                    "curriculum",
-                    dataTypes.curriculum === "BSEd" ? null : "BSEd",
-                  )
-                }
-              >
-                <Ionicons
-                  name={
-                    dataTypes.curriculum === "BSEd"
-                      ? "radio-button-on"
-                      : "radio-button-off"
-                  }
-                  size={22}
-                  color="#0D2A94"
-                />
-                <Text style={styles.radioLabel}>
-                  Bachelor of Secondary Education (BSEd)
-                </Text>
-              </TouchableOpacity>
+              {curriculumOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={styles.radioRow}
+                  onPress={() => {
+                    setField("curriculum", opt.name);
+                    setField("curriculumId", opt.id);
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      dataTypes.curriculum === opt.name
+                        ? "radio-button-on"
+                        : "radio-button-off"
+                    }
+                    size={22}
+                    color="#0D2A94"
+                  />
+                  <Text style={styles.radioLabel}>{opt.name}</Text>
+                </TouchableOpacity>
+              ))}
 
               <Text style={styles.label}>Specialization:*</Text>
               <TouchableOpacity
@@ -495,14 +774,15 @@ export default function EnrollmentScreen() {
                 <View style={styles.dropdownMenu}>
                   {majorshipOptions.map((opt) => (
                     <TouchableOpacity
-                      key={opt}
+                      key={opt.id}
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setField("specialization", opt);
+                        setField("specialization", opt.name);
+                        setField("specializationId", opt.id);
                         setIsMajorOpen(false);
                       }}
                     >
-                      <Text>{opt}</Text>
+                      <Text>{opt.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -595,15 +875,16 @@ export default function EnrollmentScreen() {
                 <View style={styles.dropdownMenu}>
                   {promoOptions.map((opt) => (
                     <TouchableOpacity
-                      key={opt}
+                      key={opt.id}
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setField("promo", opt);
+                        setField("promo", opt.name);
+                        setField("promoId", opt.id);
                         setIsPromoOpen(false);
                       }}
                     >
                       <Text style={{ color: "#2F459B", fontSize: 13 }}>
-                        {opt}
+                        {opt.name}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -616,28 +897,39 @@ export default function EnrollmentScreen() {
                 onPress={() => setIsMethodOpen(!isMethodOpen)}
               >
                 <Text
-                  style={{ color: dataTypes.paymentMethod ? "#000" : "#999" }}
+                  style={{ color: dataTypes.paymentChannel ? "#000" : "#999" }}
                 >
-                  {dataTypes.paymentMethod || "Select method"}
+                  {dataTypes.paymentChannel || "Select method"}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
               {isMethodOpen && (
                 <View style={styles.dropdownMenu}>
-                  {paymentMethods.map((method) => (
+                  {paymentChannels.map((method) => (
                     <TouchableOpacity
-                      key={method}
+                      key={method.id}
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setField("paymentMethod", method);
+                        setField("paymentChannel", method.name);
+                        setField("paymentChannelId", method.id);
                         setIsMethodOpen(false);
                       }}
                     >
-                      <Text>{method}</Text>
+                      <Text>{method.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
+
+              <Text style={styles.label}>Amount Transferred:*</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 3500"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+                value={dataTypes.amountTransferred}
+                onChangeText={(val) => setField("amountTransferred", val)}
+              />
 
               <Text style={styles.label}>Reference Number:*</Text>
               <TextInput
@@ -647,12 +939,71 @@ export default function EnrollmentScreen() {
                 value={dataTypes.referenceNumber}
                 onChangeText={(val) => setField("referenceNumber", val)}
               />
+
               <Text style={[styles.label, { marginTop: 15 }]}>
                 Verification/Receipt:*
               </Text>
-              <TouchableOpacity style={styles.uploadBtn}>
-                <Text style={styles.uploadText}>Upload attachment</Text>
+              <TouchableOpacity
+                style={styles.uploadBtn}
+                onPress={handleAttachment}
+              >
+                <Ionicons
+                  name="attach-outline"
+                  size={20}
+                  color="#666"
+                  style={{ marginBottom: 5 }}
+                />
+                <Text style={styles.uploadText}>
+                  {dataTypes.attachmentName
+                    ? `✓ ${dataTypes.attachmentName}`
+                    : "Upload attachment"}
+                </Text>
               </TouchableOpacity>
+
+              {dataTypes.attachmentUri && (
+                <View style={{ marginTop: 10 }}>
+                  {dataTypes.attachmentType === "application/pdf" ? (
+                    <TouchableOpacity
+                      style={styles.previewBtn}
+                      onPress={() =>
+                        WebBrowser.openBrowserAsync(dataTypes.attachmentUri!)
+                      }
+                    >
+                      <Ionicons
+                        name="document-outline"
+                        size={20}
+                        color="#0D2A94"
+                      />
+                      <Text style={styles.previewBtnText}>View PDF</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.previewBtn}
+                        onPress={() => setReceiptPreview(!receiptPreview)}
+                      >
+                        <Ionicons
+                          name={
+                            receiptPreview ? "eye-off-outline" : "eye-outline"
+                          }
+                          size={20}
+                          color="#0D2A94"
+                        />
+                        <Text style={styles.previewBtnText}>
+                          {receiptPreview ? "Hide Receipt" : "View Receipt"}
+                        </Text>
+                      </TouchableOpacity>
+                      {receiptPreview && (
+                        <Image
+                          source={{ uri: dataTypes.attachmentUri }}
+                          style={styles.receiptThumbnail}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </>
+                  )}
+                </View>
+              )}
 
               <TouchableOpacity
                 style={[styles.radioRow, { marginTop: 20 }]}
@@ -746,10 +1097,63 @@ export default function EnrollmentScreen() {
                       label: "Promo/Discount",
                       value: dataTypes.promo || "None",
                     })}
+                    {summaryRow({
+                      label: "Attachment",
+                      value: dataTypes.attachmentName ?? "None",
+                    })}
+                    {dataTypes.attachmentUri && (
+                      <View style={{ marginTop: 10 }}>
+                        {dataTypes.attachmentType === "application/pdf" ? (
+                          <TouchableOpacity
+                            style={styles.previewBtn}
+                            onPress={() =>
+                              WebBrowser.openBrowserAsync(
+                                dataTypes.attachmentUri!,
+                              )
+                            }
+                          >
+                            <Ionicons
+                              name="document-outline"
+                              size={20}
+                              color="#0D2A94"
+                            />
+                            <Text style={styles.previewBtnText}>View PDF</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <>
+                            <TouchableOpacity
+                              style={styles.previewBtn}
+                              onPress={() => setReceiptPreview(!receiptPreview)}
+                            >
+                              <Ionicons
+                                name={
+                                  receiptPreview
+                                    ? "eye-off-outline"
+                                    : "eye-outline"
+                                }
+                                size={20}
+                                color="#0D2A94"
+                              />
+                              <Text style={styles.previewBtnText}>
+                                {receiptPreview
+                                  ? "Hide Receipt"
+                                  : "View Receipt"}
+                              </Text>
+                            </TouchableOpacity>
+                            {receiptPreview && (
+                              <Image
+                                source={{ uri: dataTypes.attachmentUri }}
+                                style={styles.receiptThumbnail}
+                                resizeMode="contain"
+                              />
+                            )}
+                          </>
+                        )}
+                      </View>
+                    )}
                   </>
                 ),
               })}
-
               {summarySection({
                 sectionKey: "payment",
                 title: "Payment Information",
@@ -757,7 +1161,11 @@ export default function EnrollmentScreen() {
                   <>
                     {summaryRow({
                       label: "Payment Method",
-                      value: dataTypes.paymentMethod,
+                      value: dataTypes.paymentChannel,
+                    })}
+                    {summaryRow({
+                      label: "Amount",
+                      value: dataTypes.amountTransferred,
                     })}
                     {summaryRow({
                       label: "Reference #",
@@ -770,9 +1178,18 @@ export default function EnrollmentScreen() {
           </View>
         )}
       </ScrollView>
+
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}>
-          <Text style={styles.continueText}>Continue</Text>
+        <TouchableOpacity
+          style={[styles.continueBtn, loading && { opacity: 0.7 }]}
+          onPress={handleContinue}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.continueText}>Continue</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -964,4 +1381,27 @@ const styles = StyleSheet.create({
   },
   summaryValue: { fontSize: 14, color: "#000" },
   bold: { fontWeight: "bold" },
+  previewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#0D2A94",
+    borderRadius: 8,
+    marginTop: 5,
+    gap: 8,
+  },
+  previewBtnText: {
+    color: "#0D2A94",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  receiptThumbnail: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
 });

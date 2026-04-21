@@ -1,36 +1,68 @@
+import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function AdminSignIn() {
   const router = useRouter();
-  const [adminID, setAdminID] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleAdminSignIn = () => {
+  const handleAdminSignIn = async () => {
     const newErrors: string[] = [];
-    if (!adminID.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       newErrors.push("Administrator credentials are required.");
     }
-
     if (newErrors.length > 0) {
       setErrors(newErrors);
       return;
     }
     setErrors([]);
-    router.replace("/admin-dashboard" as any); 
-  };
+    setLoading(true);
 
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      setErrors(["Invalid email or password."]);
+      setLoading(false);
+      return;
+    }
+    const { data: adminRow } = await supabase
+      .from("admin")
+      .select("admin_id")
+      .eq("admin_id", data.user.id)
+      .single();
+
+    if (!adminRow) {
+      await supabase.auth.signOut();
+      setErrors(["Access denied. This account is not an administrator."]);
+      setLoading(false);
+      return;
+    }
+    Toast.show({
+      type: "success",
+      text1: "You have successfuly signed in",
+      position: "bottom",
+      visibilityTime: 3500,
+    });
+    setLoading(false);
+  };
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -45,22 +77,25 @@ export default function AdminSignIn() {
 
         <Text style={styles.welcomeText}>Management Login</Text>
 
-
         <View style={styles.card}>
-          <Text style={styles.inputLabel}>Admin ID / Email:</Text>
+          <Text style={styles.inputLabel}>Email:</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter Admin ID"
+            placeholder="Enter Admin Email"
             placeholderTextColor="#A9A9A9"
             autoCapitalize="none"
-            value={adminID}
-            onChangeText={setAdminID}
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
           />
 
           <Text style={styles.inputLabel}>Password:</Text>
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, { flex: 1, borderBottomWidth: 0, marginBottom: 0 }]}
+              style={[
+                styles.input,
+                { flex: 1, borderBottomWidth: 0, marginBottom: 0 },
+              ]}
               placeholder="Password"
               secureTextEntry={!showPassword}
               placeholderTextColor="#A9A9A9"
@@ -81,14 +116,24 @@ export default function AdminSignIn() {
               <Ionicons name="alert-circle" size={18} color="#c0392b" />
               <View style={{ flex: 1, marginLeft: 8 }}>
                 {errors.map((e, i) => (
-                  <Text key={i} style={styles.errorText}>• {e}</Text>
+                  <Text key={i} style={styles.errorText}>
+                    • {e}
+                  </Text>
                 ))}
               </View>
             </View>
           )}
 
-          <TouchableOpacity style={styles.signInBtn} onPress={handleAdminSignIn}>
-            <Text style={styles.signInText}>Verify & Login</Text>
+          <TouchableOpacity
+            style={[styles.signInBtn, loading && { opacity: 0.7 }]}
+            onPress={handleAdminSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.signInText}>Verify & Login</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -101,8 +146,18 @@ const styles = StyleSheet.create({
   backButton: { padding: 20 },
   content: { paddingHorizontal: 25, alignItems: "center" },
   headerTitle: { fontSize: 32, fontWeight: "bold", color: "#0D2A94" },
-  headerSubtitle: { fontSize: 14, color: "#666", marginTop: 5, textAlign: "center" },
-  welcomeText: { fontSize: 20, fontWeight: "700", marginVertical: 25, color: "#333" },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 5,
+    textAlign: "center",
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginVertical: 25,
+    color: "#333",
+  },
   card: {
     width: "100%",
     padding: 25,
@@ -115,10 +170,35 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   inputLabel: { fontWeight: "bold", color: "#555", marginBottom: 5 },
-  input: { borderBottomWidth: 1, borderBottomColor: "#CCC", paddingVertical: 8, marginBottom: 20, fontSize: 16 },
-  passwordContainer: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#CCC", marginBottom: 25 },
-  signInBtn: { backgroundColor: "#0D2A94", padding: 15, borderRadius: 10, alignItems: "center" },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#CCC",
+    paddingVertical: 8,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#CCC",
+    marginBottom: 25,
+  },
+  signInBtn: {
+    backgroundColor: "#0D2A94",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
   signInText: { color: "white", fontWeight: "bold", fontSize: 16 },
-  errorBanner: { flexDirection: "row", backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#e74c3c", borderRadius: 8, padding: 12, marginBottom: 12 },
+  errorBanner: {
+    flexDirection: "row",
+    backgroundColor: "#fff5f5",
+    borderWidth: 1,
+    borderColor: "#e74c3c",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
   errorText: { color: "#c0392b", fontSize: 13 },
 });
