@@ -3,13 +3,13 @@ import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -28,7 +28,6 @@ export default function ResetPasswordScreen() {
   const [sessionState, setSessionState] = useState<SessionState>("loading");
   const [sessionError, setSessionError] = useState("");
 
-  // Guard so multiple sources don't race to set the session
   const sessionSetRef = useRef(false);
 
   const markReady = () => {
@@ -94,7 +93,6 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     let urlSub: ReturnType<typeof Linking.addEventListener> | null = null;
     let authListener: any = null;
-    // Timeout so we never show an infinite spinner — after 8s, show an error
     const timeoutId = setTimeout(() => {
       markError(
         "Reset link verification timed out. Please tap the link in your email again, or request a new one.",
@@ -102,8 +100,6 @@ export default function ResetPasswordScreen() {
     }, 8000);
 
     const init = async () => {
-      // ── Source 1: Supabase already has a recovery session (fastest path) ──
-      // This fires when the user was already logged in or the OS restored session
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
           if (event === "PASSWORD_RECOVERY" && session) {
@@ -115,8 +111,9 @@ export default function ResetPasswordScreen() {
       );
       authListener = listener;
 
-      // ── Source 2: App opened cold from the deep link ──
       const initialUrl = await Linking.getInitialURL();
+      console.log("=== INITIAL URL ===", initialUrl);
+      console.log("=== URL TYPE ===", typeof initialUrl);
       console.log("Initial URL:", initialUrl);
       if (initialUrl?.includes("resetpass")) {
         clearTimeout(timeoutId);
@@ -124,7 +121,6 @@ export default function ResetPasswordScreen() {
         return;
       }
 
-      // ── Source 3: App was backgrounded and URL arrives as an event ──
       urlSub = Linking.addEventListener("url", async ({ url }) => {
         console.log("URL event:", url);
         if (url.includes("resetpass")) {
@@ -133,8 +129,6 @@ export default function ResetPasswordScreen() {
         }
       });
 
-      // ── Source 4: Check if there's already an active session with recovery ──
-      // Covers the rare case where setSession was called before this screen mounted
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session) {
         console.log("Existing session found");
@@ -203,7 +197,6 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  // ── Loading / Error screen ──────────────────────────────────────────────────
   if (sessionState !== "ready") {
     return (
       <SafeAreaView style={styles.container}>
@@ -245,7 +238,6 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
   if (step === "success") {
     return (
       <SafeAreaView style={styles.container}>
@@ -277,7 +269,6 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  // ── Form screen ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>

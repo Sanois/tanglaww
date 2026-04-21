@@ -3,13 +3,13 @@ import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -60,7 +60,9 @@ export default function ForgotPasswordScreen() {
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
-        { redirectTo },
+        {
+          redirectTo: "tanglaw://resetpass",
+        },
       );
 
       console.log("Reset email error:", resetError);

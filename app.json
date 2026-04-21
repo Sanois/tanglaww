@@ -7,8 +7,8 @@
     "icon": "./assets/icons/ios-dark.png",
     "scheme": "tanglaw",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.tanglaw.tarc",
       "supportsTablet": true,
       "icon": {
         "dark": "./assets/icons/ios-dark.png",
@@ -17,13 +17,14 @@
       }
     },
     "android": {
+      "package": "com.tanglaw.tarc",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#00167a",
         "foregroundImage": "./assets/icons/adaptive-icon.png",
         "backgroundImage": "./assets/icons/adaptive-icon.png",
         "monochromeImage": "./assets/icons/adaptive-icon.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
         {
@@ -61,6 +62,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fceed51d-e69c-4535-87d0-3d3f4ca511e5"
+      }
     }
   }
 }

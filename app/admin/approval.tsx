@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -38,11 +39,7 @@ const sendActivationEmail = async (
       },
     );
 
-    console.log("Response status:", response.status);
-    console.log("Response content-type:", response.headers.get("content-type"));
-
     const text = await response.text();
-    console.log("Raw response:", text);
 
     const data = JSON.parse(text);
     return data?.success === true;
@@ -94,9 +91,6 @@ export default function AdminApproval() {
   });
 
   const handleApprove = async (enrollment: any) => {
-    console.log("handleApprove called");
-    console.log("Full enrollment object:", JSON.stringify(enrollment, null, 2));
-    console.log("enrollment:", JSON.stringify(enrollment, null, 2));
     Alert.alert(
       "Approve Enrollment",
       `Approve ${enrollment.student.firstName} ${enrollment.student.lastName}?`,
@@ -121,10 +115,6 @@ export default function AdminApproval() {
 
               if (verifyError) throw new Error(verifyError.message);
 
-              console.log("Verification updated, generating code...");
-              console.log("enrollment_id:", enrollment.enrollment_id);
-              console.log("student_id:", enrollment.student_id);
-
               const { data: existingCode, error: existingError } =
                 await supabase
                   .from("activation_codes")
@@ -133,9 +123,6 @@ export default function AdminApproval() {
                   .eq("is_used", false)
                   .gt("expires_at", new Date().toISOString())
                   .maybeSingle();
-
-              console.log("existingCode:", existingCode);
-              console.log("existingError:", existingError);
 
               let code: string;
 
@@ -178,8 +165,6 @@ export default function AdminApproval() {
 
               await refreshData();
             } catch (err: any) {
-              console.error("handleApprove full error:", err);
-              console.error("handleApprove message:", err.message);
               Alert.alert("Error", err.message ?? "Something went wrong.");
             } finally {
               setActionLoading(null);
@@ -299,7 +284,14 @@ export default function AdminApproval() {
       }
     >
       <View style={styles.avatarCircle}>
-        <Ionicons name="person-outline" size={20} color="#555" />
+        {enrollment.student?.profilephotourl ? (
+          <Image
+            source={{ uri: enrollment.student.profilephotourl }}
+            style={styles.avatarImage}
+          />
+        ) : (
+          <Ionicons name="person-outline" size={30} color="#BDC3C7" />
+        )}
       </View>
       <View style={styles.textContainer}>
         <Text style={styles.nameText}>
@@ -702,4 +694,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 15 },
+  avatarImage: { width: 50, height: 50, borderRadius: 50 },
 });

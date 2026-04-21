@@ -7,8 +7,8 @@ import {
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Image,
   Dimensions,
+  Image,
   Modal,
   Platform,
   SafeAreaView,
@@ -105,25 +105,25 @@ export default function Homepage() {
         </Text>
 
         <View style={styles.carouselContainer}>
-           <View
-  style={{
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
-  }}
->
-  <Image
-    source={dashboardImage}
-    style={{
-      width: "150%",      
-      height: "100%",
-      marginLeft: -10,    
-      resizeMode: "cover",
-      borderRadius: 12,
-    }}
-  />
-</View>
+          <View
+            style={{
+              width: "100%",
+              height: 200,
+              borderRadius: 12,
+              overflow: "hidden",
+            }}
+          >
+            <Image
+              source={dashboardImage}
+              style={{
+                width: "150%",
+                height: "100%",
+                marginLeft: -10,
+                resizeMode: "cover",
+                borderRadius: 12,
+              }}
+            />
+          </View>
           <View style={styles.pagination}>
             <View style={[styles.dot, styles.activeDot]} />
             <View style={styles.dot} />

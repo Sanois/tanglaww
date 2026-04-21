@@ -8,7 +8,8 @@ export const adminService = {
                 student (
                   firstName, 
                   lastName, 
-                  email 
+                  email,
+                  profilephotourl
                   ),
                 paymentDetails (
                   referenceNumber,

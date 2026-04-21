@@ -150,7 +150,7 @@ export default function RegistrantDetails() {
 
       setAllowReenrollment(newValue);
       Alert.alert(
-        newValue ? "✅ Re-enrollment Allowed" : "Re-enrollment Disabled",
+        newValue ? "Re-enrollment Allowed" : "Re-enrollment Disabled",
         newValue
           ? "This student can now re-enroll with the same email."
           : "Re-enrollment has been disabled for this student.",
@@ -402,7 +402,14 @@ export default function RegistrantDetails() {
       <ScrollView style={styles.content}>
         <View style={styles.profileSection}>
           <View style={styles.avatarLarge}>
-            <Ionicons name="person-outline" size={50} color="#555" />
+            {enrollment.student?.profilephotourl ? (
+              <Image
+                source={{ uri: enrollment.student.profilephotourl }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Ionicons name="person-outline" size={50} color="#BDC3C7" />
+            )}
           </View>
           <Text style={styles.registrantName}>{displayName}</Text>
           <Text style={styles.registrantSub}>
@@ -1068,4 +1075,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   reenrollAllowedText: { fontSize: 12, color: "#27ae60", flex: 1 },
+  avatarImage: { width: 100, height: 100, borderRadius: 50 },
 });

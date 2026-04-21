@@ -2,27 +2,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Linking,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Linking,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import YoutubePlayer from "react-native-youtube-iframe";
 import { useAdmin } from "../../context/AdminContext";
 import {
-    addRecordedSession,
-    deleteMaterial,
-    getMaterialsByModule,
-    LearningMaterial,
+  addRecordedSession,
+  deleteMaterial,
+  getMaterialsByModule,
+  LearningMaterial,
 } from "../../services/materialService";
 
 const { width } = Dimensions.get("window");

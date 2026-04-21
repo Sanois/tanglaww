@@ -135,9 +135,9 @@ export default function ProfileScreen() {
 
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
-              {student?.profilePhotoUrl ? (
+              {student?.profilephotourl ? (
                 <Image
-                  source={{ uri: student.profilePhotoUrl }}
+                  source={{ uri: student.profilephotourl }}
                   style={styles.avatarImage}
                 />
               ) : (

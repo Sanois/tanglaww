@@ -32,6 +32,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
     lastName: "",
     email: "",
     curriculum: { curriculumName: "" },
+    profilephotourl: "",
   });
 
   const handleNav = (path: string) => {
@@ -52,7 +53,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
 
       const { data: studentData } = await supabase
         .from("student")
-        .select("firstName, lastName, email, id")
+        .select("firstName, lastName, email, id, profilephotourl")
         .eq("auth_id", user.id)
         .maybeSingle();
 
@@ -77,6 +78,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
         lastName: studentData.lastName,
         email: studentData.email,
         curriculum: { curriculumName: curriculumData?.curriculumName ?? "" },
+        profilephotourl: studentData.profilephotourl ?? "",
       });
     };
     fetchStudent();
@@ -94,7 +96,14 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
         </View>
 
         <View style={styles.avatarCircle}>
-          <Ionicons name="person-outline" size={40} color="#0D2A94" />
+          {student?.profilephotourl ? (
+            <Image
+              source={{ uri: student.profilephotourl }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Ionicons name="person-outline" size={60} color="#BDC3C7" />
+          )}
         </View>
         <View style={styles.headerTextContent}>
           <Text style={styles.userName}>
@@ -256,4 +265,5 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     marginHorizontal: 25,
   },
+  avatarImage: { width: 80, height: 80, borderRadius: 40 },
 });

@@ -105,13 +105,13 @@ export default function AdminDashboard() {
             style={{
               width: "100%",
               height: 200,
-              resizeMode: "cover", // or "cover"
+              resizeMode: "cover",
               borderRadius: 12,
             }}
           />
-            <TouchableOpacity style={styles.editIconHero}>
-              <Ionicons name="pencil-outline" size={16} color="black" />
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.editIconHero}>
+            <Ionicons name="pencil-outline" size={16} color="black" />
+          </TouchableOpacity>
           <View style={styles.paginationDots}>
             <View style={[styles.dot, styles.activeDot]} />
             <View style={styles.dot} />

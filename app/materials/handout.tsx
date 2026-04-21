@@ -3,23 +3,23 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { useAdmin } from "../../context/AdminContext";
 import {
-    deleteMaterial,
-    downloadMaterial,
-    getMaterialsByModule,
-    LearningMaterial,
-    uploadHandout,
+  deleteMaterial,
+  downloadMaterial,
+  getMaterialsByModule,
+  LearningMaterial,
+  uploadHandout,
 } from "../../services/materialService";
 
 const formatBytes = (bytes: number | null) => {

@@ -73,8 +73,6 @@ export default function AdminCourses() {
     const primaryModule = course.modules[0] ?? null;
 
     const navigateTo = (screen: "handout" | "recorded-sessions") => {
-      console.log("primaryModule:", primaryModule);
-      console.log("courseTitle:", course.courseName);
       if (!primaryModule) return;
       router.push({
         pathname: `/materials/${screen}` as any,
