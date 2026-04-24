@@ -1,6 +1,8 @@
+import { useConnectivityCheck } from "@/services/connectivityCheck";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   Image,
   SafeAreaView,
   StyleSheet,
@@ -12,6 +14,7 @@ import {
 export default function WelcomeScreen() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
+  const isOnline = useConnectivityCheck();
 
   const slides = [
     {
@@ -33,6 +36,11 @@ export default function WelcomeScreen() {
   ];
 
   const handleNext = () => {
+    if (isOnline === false) {
+      Alert.alert("No internet", "Please connect to the internet to continue.");
+      return;
+    }
+
     if (currentStep < slides.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -42,6 +50,13 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
+      {isOnline === false && (
+        <View style={styles.internetBanner}>
+          <Text style={styles.internetText}>
+            No internet connection. Please connect to continue.
+          </Text>
+        </View>
+      )}
       <View style={styles.topSection}>
         <Image
           source={slides[currentStep].image}
@@ -54,7 +69,12 @@ export default function WelcomeScreen() {
         <SafeAreaView style={styles.innerContainer}>
           <Text style={styles.titleText}>{slides[currentStep].text}</Text>
           <View style={styles.footer}>
-            <TouchableOpacity onPress={() => router.push("/login")}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isOnline === false) return;
+                router.push("/login");
+              }}
+            >
               <Text style={styles.skipBtn}>SKIP</Text>
             </TouchableOpacity>
             <View style={styles.dotRow}>
@@ -137,4 +157,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   arrow: { color: "white", fontSize: 24, fontWeight: "bold" },
+  internetBanner: {
+    position: "absolute",
+    top: 40,
+    width: "100%",
+    backgroundColor: "#fdecea",
+    paddingVertical: 8,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  internetText: {
+    color: "#c0392b",
+    fontSize: 12,
+    fontWeight: "600",
+  },
 });

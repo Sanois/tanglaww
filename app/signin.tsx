@@ -1,5 +1,6 @@
 import { generateSessionToken, registerSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/services/auditService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -65,7 +66,7 @@ export default function SignInScreen() {
 
       const { data: student, error: studentError } = await supabase
         .from("student")
-        .select("id")
+        .select("id, firstName, lastName")
         .eq("email", email.trim().toLowerCase())
         .single();
 
@@ -77,6 +78,13 @@ export default function SignInScreen() {
 
       const token = await generateSessionToken();
       await registerSession(student.id, token);
+
+      await logAudit({
+        actorType: "student",
+        actorId: String(student.id),
+        actorName: `${student.firstName} ${student.lastName}`,
+        action: "student_login",
+      });
 
       Toast.show({
         type: "success",

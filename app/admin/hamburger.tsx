@@ -136,6 +136,18 @@ export default function AdminHamburger({
                   <Text style={styles.navText}>Student Registry</Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={styles.navItem}
+                  onPress={() => navigateTo("/admin/audit-logs")}
+                >
+                  <Ionicons
+                    name="list-circle-outline"
+                    size={20}
+                    color="#2F459B"
+                  />
+                  <Text style={styles.navText}>Audit Log</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.sectionLabel}>APP CONFIGURATION</Text>
 
                 <TouchableOpacity

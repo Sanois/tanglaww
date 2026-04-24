@@ -1,5 +1,6 @@
 import { clearSession, getStoredStudentId } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/services/auditService";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -27,7 +28,15 @@ interface HamburgerProps {
 export default function HamburgerMenu({ onClose }: HamburgerProps) {
   const router = useRouter();
 
-  const [student, setStudent] = useState({
+  const [student, setStudent] = useState<{
+    id: number | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+    curriculum: { curriculumName: string };
+    profilephotourl: string;
+  }>({
+    id: null,
     firstName: "",
     lastName: "",
     email: "",
@@ -36,9 +45,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
   });
 
   const handleNav = (path: string) => {
-    if (onClose) {
-      onClose();
-    }
+    if (onClose) onClose();
     setTimeout(() => {
       router.push(path as any);
     }, 100);
@@ -74,6 +81,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
         .maybeSingle();
 
       setStudent({
+        id: studentData.id,
         firstName: studentData.firstName,
         lastName: studentData.lastName,
         email: studentData.email,
@@ -83,6 +91,38 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
     };
     fetchStudent();
   }, []);
+
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          if (student.id) {
+            await logAudit({
+              actorType: "student",
+              actorId: String(student.id),
+              actorName: `${student.firstName} ${student.lastName}`,
+              action: "student_logout",
+            });
+          }
+
+          const studentId = await getStoredStudentId();
+          if (studentId) await clearSession(studentId);
+          await supabase.auth.signOut();
+
+          Toast.show({
+            type: "success",
+            text1: "You have logged out successfully",
+            position: "bottom",
+            visibilityTime: 4000,
+          });
+          router.replace("/login");
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.drawerContainer}>
@@ -172,30 +212,7 @@ export default function HamburgerMenu({ onClose }: HamburgerProps) {
           <Text style={styles.menuText}>Policies</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Sign Out",
-                style: "destructive",
-                onPress: async () => {
-                  const studentId = await getStoredStudentId();
-                  if (studentId) await clearSession(studentId);
-                  await supabase.auth.signOut();
-                  Toast.show({
-                    type: "success",
-                    text1: "You have logged out successfully",
-                    position: "bottom",
-                    visibilityTime: 4000,
-                  });
-                  router.replace("/login");
-                },
-              },
-            ]);
-          }}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
           <Ionicons name="log-out-outline" size={22} color="#FF4D4D" />
           <Text style={[styles.menuText, { color: "#FF4D4D" }]}>Sign Out</Text>
         </TouchableOpacity>
@@ -228,9 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     zIndex: 2,
   },
-  headerTextContent: {
-    zIndex: 2,
-  },
+  headerTextContent: { zIndex: 2 },
   userName: { color: "#FFB800", fontSize: 18, fontWeight: "bold" },
   userRole: { color: "white", fontSize: 13, marginTop: 2 },
   userEmail: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 2 },

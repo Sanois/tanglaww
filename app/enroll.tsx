@@ -859,6 +859,20 @@ export default function EnrollmentScreen() {
         {step === 4 && (
           <View>
             {renderProgressHeader("Promotions & Payment")}
+            <View style={styles.warningBanner}>
+              <Ionicons
+                name="alert-circle"
+                size={18}
+                color="#b9770e"
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.warningText}>
+                  ATTENTION: Kindly consult with our admins regarding the course
+                  prices before proceeding.
+                </Text>
+              </View>
+            </View>
             <View style={styles.formBody}>
               {errorRender()}
               <Text style={styles.label}>Promo/Discount to avail</Text>
@@ -1023,8 +1037,14 @@ export default function EnrollmentScreen() {
                   size={24}
                   color="#0D2A94"
                 />
-                <Text style={[styles.radioLabel, { fontSize: 12, flex: 1 }]}>
-                  I acknowledge that all info is correct.
+                <Text
+                  style={[
+                    styles.radioLabel,
+                    { fontSize: 12, flex: 1, lineHeight: 17 },
+                  ]}
+                >
+                  I acknowledge that all info is correct and had consulted with
+                  an admin before proceeding.
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1338,6 +1358,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: { color: "#c0392b", fontSize: 13, lineHeight: 20 },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#fff8e1",
+    borderWidth: 1,
+    borderColor: "#b9770e",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: -20,
+    marginLeft: 12,
+    marginTop: 10,
+    width: 335,
+  },
+  warningText: {
+    color: "#b9770e",
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "bold",
+  },
   required: { color: "#c0392b" },
   summaryIntro: {
     fontSize: 14,

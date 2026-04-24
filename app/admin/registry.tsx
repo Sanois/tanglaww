@@ -19,9 +19,10 @@ export default function AdminRegistry() {
   const [search, setSearch] = useState("");
 
   const filteredStudents = students.filter((s) => {
-    const fullName = `${s.firstName ?? ""} ${s.lastName ?? ""}`.toLowerCase();
-    const email = s.email?.toLowerCase() ?? "";
-    const id = s.id?.toString() ?? "";
+    const fullName =
+      `${s.student?.firstName ?? ""} ${s.student?.lastName ?? ""}`.toLowerCase();
+    const email = s.student?.email?.toLowerCase() ?? "";
+    const id = s.student?.id?.toString() ?? "";
     return (
       fullName.includes(search.toLowerCase()) ||
       email.includes(search.toLowerCase()) ||
@@ -40,22 +41,20 @@ export default function AdminRegistry() {
       }
     >
       <View style={styles.studentCard}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={20} color="#666" />
-        </View>
-        <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.sName}>
-            {item.student?.firstName} {item.student?.lastName}
-          </Text>
-          <Text style={styles.sSub}>
-            {item.curriculum?.curriculumName} • {item.student?.email}
-          </Text>
-          <Text style={styles.sID}>ID: {item.student.id}</Text>
-        </View>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={20} color="#CCC" />
-        </TouchableOpacity>
+        <Ionicons name="person" size={20} color="#666" />
       </View>
+      <View style={{ flex: 1, marginLeft: 15 }}>
+        <Text style={styles.sName}>
+          {item.student?.firstName} {item.student?.lastName}
+        </Text>
+        <Text style={styles.sSub}>
+          {item.curriculum?.curriculumName} • {item.student?.email}
+        </Text>
+        <Text style={styles.sID}>ID: {item.student.id}</Text>
+      </View>
+      <TouchableOpacity>
+        <Ionicons name="ellipsis-vertical" size={20} color="#CCC" />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 

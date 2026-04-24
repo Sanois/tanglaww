@@ -1,5 +1,6 @@
 import { useAdmin } from "@/context/AdminContext";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/services/auditService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -40,7 +41,6 @@ const sendActivationEmail = async (
     );
 
     const text = await response.text();
-
     const data = JSON.parse(text);
     return data?.success === true;
   } catch (err) {
@@ -51,7 +51,7 @@ const sendActivationEmail = async (
 
 export default function AdminApproval() {
   const router = useRouter();
-  const { auditRequests, loading, refreshData } = useAdmin();
+  const { auditRequests, loading, refreshData, currentAdminId } = useAdmin();
 
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -67,6 +67,16 @@ export default function AdminApproval() {
   const onRefresh = () => {
     setRefreshing(true);
     refreshData().then(() => setRefreshing(false));
+  };
+
+  const getAdminName = async (): Promise<string> => {
+    if (!currentAdminId) return "Admin";
+    const { data } = await supabase
+      .from("admin")
+      .select("firstName, lastName")
+      .eq("admin_id", currentAdminId)
+      .single();
+    return data ? `${data.firstName} ${data.lastName}` : "Admin";
   };
 
   const pending = auditRequests.filter((e: any) => {
@@ -115,14 +125,13 @@ export default function AdminApproval() {
 
               if (verifyError) throw new Error(verifyError.message);
 
-              const { data: existingCode, error: existingError } =
-                await supabase
-                  .from("activation_codes")
-                  .select("code")
-                  .eq("enrollment_id", enrollment.enrollment_id)
-                  .eq("is_used", false)
-                  .gt("expires_at", new Date().toISOString())
-                  .maybeSingle();
+              const { data: existingCode } = await supabase
+                .from("activation_codes")
+                .select("code")
+                .eq("enrollment_id", enrollment.enrollment_id)
+                .eq("is_used", false)
+                .gt("expires_at", new Date().toISOString())
+                .maybeSingle();
 
               let code: string;
 
@@ -130,7 +139,6 @@ export default function AdminApproval() {
                 code = existingCode.code;
               } else {
                 code = generateCode();
-
                 const expiresAt = new Date();
                 expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -143,7 +151,6 @@ export default function AdminApproval() {
                     is_used: false,
                     expires_at: expiresAt.toISOString(),
                   });
-                console.log("codeError:", codeError);
 
                 if (codeError) throw new Error(codeError.message);
               }
@@ -154,6 +161,22 @@ export default function AdminApproval() {
                 enrollment.student.firstName,
                 code,
               );
+
+              const adminName = await getAdminName();
+              await logAudit({
+                actorType: "admin",
+                actorId: currentAdminId ?? "",
+                actorName: adminName,
+                action: "admin_approved_enrollment",
+                targetType: "enrollment",
+                targetId: String(enrollment.enrollment_id),
+                targetName: studentName,
+                metadata: {
+                  studentId: enrollment.student_id,
+                  email: enrollment.student.email,
+                  curriculum: enrollment.curriculum?.curriculumName,
+                },
+              });
 
               setGeneratedCode(code);
               setEmailSent(sent);
@@ -201,6 +224,24 @@ export default function AdminApproval() {
                 .eq("verification_id", v?.verification_id);
 
               if (error) throw new Error(error.message);
+
+              const adminName = await getAdminName();
+              const studentName = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
+              await logAudit({
+                actorType: "admin",
+                actorId: currentAdminId ?? "",
+                actorName: adminName,
+                action: "admin_rejected_enrollment",
+                targetType: "enrollment",
+                targetId: String(enrollment.enrollment_id),
+                targetName: studentName,
+                metadata: {
+                  studentId: enrollment.student_id,
+                  email: enrollment.student.email,
+                  curriculum: enrollment.curriculum?.curriculumName,
+                },
+              });
+
               await refreshData();
             } catch (err: any) {
               Alert.alert("Error", err.message ?? "Something went wrong.");
@@ -226,7 +267,6 @@ export default function AdminApproval() {
       Alert.alert("No Code", "No activation code found for this student.");
       return;
     }
-
     if (data.is_used) {
       Alert.alert(
         "Account Activated",
@@ -234,7 +274,6 @@ export default function AdminApproval() {
       );
       return;
     }
-
     if (new Date(data.expires_at) < new Date()) {
       Alert.alert(
         "Code Expired",
@@ -582,7 +621,6 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, alignItems: "center" },
   tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -612,7 +650,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   modalEmail: { fontSize: 12, color: "#777", marginBottom: 12 },
-
   emailSuccessBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -639,12 +676,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   emailFailText: { fontSize: 12, color: "#E74C3C", fontWeight: "600" },
-
-  codeDisplay: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
+  codeDisplay: { flexDirection: "row", gap: 8, marginBottom: 8 },
   codeDigitBox: {
     width: 40,
     height: 50,
@@ -655,11 +687,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  codeDigit: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#0D2A94",
-  },
+  codeDigit: { fontSize: 22, fontWeight: "bold", color: "#0D2A94" },
   codeExpiry: {
     fontSize: 11,
     color: "#E74C3C",

@@ -1,3 +1,4 @@
+import { logAudit } from "@/services/auditService";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -165,17 +166,34 @@ function AddSessionModal({
 function PlayerModal({
   session,
   onClose,
+  onViewed,
 }: {
   session: LearningMaterial | null;
   onClose: () => void;
+  onViewed?: (session: LearningMaterial) => void;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [logged, setLogged] = useState(false);
 
   useEffect(() => {
-    if (session) setPlaying(false);
+    if (session) {
+      setPlaying(false);
+      setLogged(false);
+    }
   }, [session?.material_id]);
 
   if (!session?.youtubeId) return null;
+
+  const handleStateChange = (state: string) => {
+    if (state === "playing") {
+      setPlaying(true);
+      if (!logged && onViewed) {
+        setLogged(true);
+        onViewed(session);
+      }
+    }
+    if (state === "paused" || state === "ended") setPlaying(false);
+  };
 
   return (
     <Modal visible animationType="slide">
@@ -195,10 +213,7 @@ function PlayerModal({
             width={width}
             videoId={session.youtubeId}
             play={playing}
-            onChangeState={(state: string) => {
-              if (state === "playing") setPlaying(true);
-              if (state === "paused" || state === "ended") setPlaying(false);
-            }}
+            onChangeState={handleStateChange}
           />
         </View>
 
@@ -227,7 +242,7 @@ export default function RecordedSessionsScreen() {
     useLocalSearchParams<{ moduleId: string; courseTitle: string }>();
 
   const moduleId = Number(moduleIdParam);
-  const { isAdmin, currentAdminId } = useAdmin();
+  const { isAdmin, currentAdminId, currentStudentId } = useAdmin();
 
   const [sessions, setSessions] = useState<LearningMaterial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +275,20 @@ export default function RecordedSessionsScreen() {
         },
       },
     ]);
+  };
+
+  const handleSessionViewed = async (session: LearningMaterial) => {
+    if (!isAdmin && currentStudentId) {
+      await logAudit({
+        actorType: "student",
+        actorId: String(currentStudentId),
+        action: "student_viewed_session",
+        targetType: "session",
+        targetId: String(session.material_id),
+        targetName: session.title,
+        metadata: { courseTitle, moduleId },
+      });
+    }
   };
 
   const renderItem = ({ item }: { item: LearningMaterial }) => (
@@ -387,6 +416,7 @@ export default function RecordedSessionsScreen() {
       <PlayerModal
         session={activeSession}
         onClose={() => setActiveSession(null)}
+        onViewed={handleSessionViewed}
       />
     </SafeAreaView>
   );

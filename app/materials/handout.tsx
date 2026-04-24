@@ -1,3 +1,4 @@
+import { logAudit } from "@/services/auditService";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -96,7 +97,7 @@ export default function HandoutScreen() {
     useLocalSearchParams<{ moduleId: string; courseTitle: string }>();
 
   const moduleId = Number(moduleIdParam);
-  const { isAdmin, currentAdminId } = useAdmin();
+  const { isAdmin, currentAdminId, currentStudentId } = useAdmin();
 
   const [handouts, setHandouts] = useState<LearningMaterial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +145,21 @@ export default function HandoutScreen() {
     );
   };
 
+  const handleView = async (item: LearningMaterial) => {
+    setViewingMaterial(item);
+    if (!isAdmin && currentStudentId) {
+      await logAudit({
+        actorType: "student",
+        actorId: String(currentStudentId),
+        action: "student_viewed_material",
+        targetType: "material",
+        targetId: String(item.material_id),
+        targetName: item.title,
+        metadata: { courseTitle, moduleId },
+      });
+    }
+  };
+
   const handleDownload = async (item: LearningMaterial) => {
     setDownloadingId(item.material_id);
     const result = await downloadMaterial(item);
@@ -152,6 +168,18 @@ export default function HandoutScreen() {
     if (!result.success) {
       Alert.alert("Download Failed", result.error ?? "Unknown error");
       return;
+    }
+
+    if (!isAdmin && currentStudentId) {
+      await logAudit({
+        actorType: "student",
+        actorId: String(currentStudentId),
+        action: "student_downloaded_material",
+        targetType: "material",
+        targetId: String(item.material_id),
+        targetName: item.title,
+        metadata: { courseTitle, moduleId },
+      });
     }
 
     try {
@@ -207,7 +235,7 @@ export default function HandoutScreen() {
           <View style={styles.actions}>
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => setViewingMaterial(item)}
+              onPress={() => handleView(item)}
             >
               <Ionicons name="eye-outline" size={15} color="#2F459B" />
               <Text style={styles.actionBtnText}>View</Text>

@@ -16,6 +16,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { useAdmin } from "../context/AdminContext";
 import { supabase } from "../lib/supabase";
 import { getModulesByCourse } from "../services/materialService";
 import HamburgerMenu from "./hamburger";
@@ -35,13 +36,19 @@ interface Course {
 
 export default function CoursesScreen() {
   const router = useRouter();
+  const { currentStudentId } = useAdmin();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [accessibleCourseIds, setAccessibleCourseIds] = useState<Set<number>>(
+    new Set(),
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCourses = async () => {
+      if (!currentStudentId) return;
+
       const { data, error } = await supabase
         .from("course")
         .select("course_id, courseName, isActive, instructor")
@@ -52,6 +59,15 @@ export default function CoursesScreen() {
         setLoading(false);
         return;
       }
+
+      const { data: accessRows } = await supabase
+        .from("course_access")
+        .select("course_id")
+        .eq("student_id", currentStudentId);
+
+      setAccessibleCourseIds(
+        new Set((accessRows ?? []).map((r) => r.course_id)),
+      );
 
       const coursesWithModules = await Promise.all(
         (data ?? []).map(async (c) => {
@@ -65,7 +81,7 @@ export default function CoursesScreen() {
     };
 
     fetchCourses();
-  }, []);
+  }, [currentStudentId]);
 
   const toggleDropdown = (courseId: number) => {
     setExpandedId(expandedId === courseId ? null : courseId);
@@ -123,7 +139,7 @@ export default function CoursesScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {courses.map((course) => {
-            const isLocked = !course.isActive;
+            const isLocked = !accessibleCourseIds.has(course.course_id);
             const isExpanded = expandedId === course.course_id;
             const progress = getProgress(course.course_id);
             const isOnboarding = course.course_id === 1;
