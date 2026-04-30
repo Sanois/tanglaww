@@ -4,10 +4,11 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -44,44 +45,49 @@ export default function CoursesScreen() {
     new Set(),
   );
   const [loading, setLoading] = useState(true);
+  const [refresh, setRefresh] = useState(false);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      if (!currentStudentId) return;
-
-      const { data, error } = await supabase
-        .from("course")
-        .select("course_id, courseName, isActive, instructor")
-        .order("course_id");
-
-      if (error) {
-        console.error("fetchCourses:", error.message);
-        setLoading(false);
-        return;
-      }
-
-      const { data: accessRows } = await supabase
-        .from("course_access")
-        .select("course_id")
-        .eq("student_id", currentStudentId);
-
-      setAccessibleCourseIds(
-        new Set((accessRows ?? []).map((r) => r.course_id)),
-      );
-
-      const coursesWithModules = await Promise.all(
-        (data ?? []).map(async (c) => {
-          const modules = await getModulesByCourse(c.course_id);
-          return { ...c, modules };
-        }),
-      );
-
-      setCourses(coursesWithModules);
-      setLoading(false);
-    };
-
     fetchCourses();
   }, [currentStudentId]);
+
+  const fetchCourses = async () => {
+    if (!currentStudentId) return;
+
+    const { data, error } = await supabase
+      .from("course")
+      .select("course_id, courseName, isActive, instructor")
+      .order("course_id");
+
+    if (error) {
+      console.error("fetchCourses:", error.message);
+      setLoading(false);
+      return;
+    }
+
+    const { data: accessRows } = await supabase
+      .from("course_access")
+      .select("course_id")
+      .eq("student_id", currentStudentId);
+
+    setAccessibleCourseIds(new Set((accessRows ?? []).map((r) => r.course_id)));
+
+    const coursesWithModules = await Promise.all(
+      (data ?? []).map(async (c) => {
+        const modules = await getModulesByCourse(c.course_id);
+        return { ...c, modules };
+      }),
+    );
+
+    setCourses(coursesWithModules);
+    setLoading(false);
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchCourses();
+    setRefresh(false);
+  }, [fetchCourses]);
 
   const toggleDropdown = (courseId: number) => {
     setExpandedId(expandedId === courseId ? null : courseId);
@@ -137,9 +143,19 @@ export default function CoursesScreen() {
           <ActivityIndicator size="large" color="#2F459B" />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refresh}
+              onRefresh={onRefresh}
+              colors={["#2F459B"]}
+            />
+          }
+          contentContainerStyle={styles.scrollContent}
+        >
           {courses.map((course) => {
-            const isLocked = !accessibleCourseIds.has(course.course_id);
+            const isLocked =
+              !course.isActive && !accessibleCourseIds.has(course.course_id);
             const isExpanded = expandedId === course.course_id;
             const progress = getProgress(course.course_id);
             const isOnboarding = course.course_id === 1;

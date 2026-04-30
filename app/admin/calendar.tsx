@@ -1,23 +1,25 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Linking,
+  Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from "react-native";
 import AdminHamburger from "./hamburger";
 
-const { width } = useWindowDimensions();
+const { width } = Dimensions.get("window");
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
   "January",
@@ -48,6 +50,11 @@ export default function AdminCalendar() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState(today.getDate());
 
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [eventModalVisible, setEventModalVisible] = useState(false);
+
+  const [refresh, setRefresh] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const {
@@ -71,6 +78,12 @@ export default function AdminCalendar() {
     setLoading(false);
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchData();
+    setRefresh(false);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -80,7 +93,6 @@ export default function AdminCalendar() {
       .from("admin_todo")
       .update({ iscompleted: !todo.iscompleted })
       .eq("id", todo.id);
-
     if (error) {
       Alert.alert("Error", error.message);
       return;
@@ -105,7 +117,7 @@ export default function AdminCalendar() {
   const handleDeleteEvent = async (id: number) => {
     Alert.alert(
       "Delete Event",
-      "This will remove it from all students calendars. Continue?",
+      "This will remove it from all students' calendars. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -117,18 +129,22 @@ export default function AdminCalendar() {
               .delete()
               .eq("event_id", id)
               .select();
-
             if (error) {
               Alert.alert("Error", `${error.message}\nCode: ${error.code}`);
               return;
             }
-
-            Alert.alert("Success", `Deleted ${data.length} row(s)`);
+            setEventModalVisible(false);
+            Alert.alert("Success", `Deleted ${data.length} event`);
             fetchData();
           },
         },
       ],
     );
+  };
+
+  const openEventModal = (event: any) => {
+    setSelectedEvent(event);
+    setEventModalVisible(true);
   };
 
   const handleTabChange = (tabName: string, index: number) => {
@@ -159,22 +175,18 @@ export default function AdminCalendar() {
     } else setCurrentMonth((m) => m + 1);
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", {
+      month: "long",
       day: "numeric",
       year: "numeric",
     });
-  };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("en-US", {
+  const formatTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const hasEvent = (day: number) =>
     events.some((e) => {
@@ -213,6 +225,13 @@ export default function AdminCalendar() {
       />
 
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={onRefresh}
+            colors={["#2F459B"]}
+          />
+        }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -230,10 +249,7 @@ export default function AdminCalendar() {
 
         <View style={styles.calendarGrid}>
           {DAYS.map((day) => (
-            <Text
-              key={`day-${currentYear}-${currentMonth}-${day}`}
-              style={styles.dayLabel}
-            >
+            <Text key={`label-${day}`} style={styles.dayLabel}>
               {day}
             </Text>
           ))}
@@ -246,11 +262,26 @@ export default function AdminCalendar() {
               day === selectedDate &&
               currentMonth === today.getMonth() &&
               currentYear === today.getFullYear();
+            const dayEvents = events.filter((e) => {
+              const d = new Date(e.event_date);
+              return (
+                d.getDate() === day &&
+                d.getMonth() === currentMonth &&
+                d.getFullYear() === currentYear
+              );
+            });
             return (
               <TouchableOpacity
                 key={`day-${currentYear}-${currentMonth}-${day}`}
                 style={[styles.dateBox, isSelected && styles.selectedDate]}
-                onPress={() => setSelectedDate(day)}
+                onPress={() => {
+                  setSelectedDate(day);
+                  if (dayEvents.length === 1) {
+                    openEventModal(dayEvents[0]);
+                  } else if (dayEvents.length > 1) {
+                    openEventModal(dayEvents[0]);
+                  }
+                }}
               >
                 <Text
                   style={[
@@ -263,13 +294,11 @@ export default function AdminCalendar() {
                 <View style={styles.dotRow}>
                   {hasEvent(day) && (
                     <View
-                      key={`event-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#2F459B" }]}
                     />
                   )}
                   {hasTodo(day) && (
                     <View
-                      key={`todo-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#FFD75E" }]}
                     />
                   )}
@@ -326,94 +355,37 @@ export default function AdminCalendar() {
           {loading ? (
             <ActivityIndicator color="#2F459B" />
           ) : activeTab === "Upcoming" ? (
-            <>
-              {events.length === 0 ? (
-                <Text style={styles.emptyText}>
-                  No upcoming events yet. Tap + to add one!
-                </Text>
-              ) : (
-                events.map((event) => (
-                  <View key={event.event_id} style={styles.eventCard}>
-                    <TouchableOpacity
-                      style={styles.eventInfo}
-                      onPress={() => event.link && Linking.openURL(event.link)}
-                    >
-                      <Text style={styles.eventTitle}>{event.title}</Text>
-                      {event.description && (
-                        <Text style={styles.eventDesc}>
-                          {event.description}
-                        </Text>
-                      )}
-                      {event.link && (
-                        <Text style={styles.eventLink} numberOfLines={1}>
-                          {event.link}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                    <View style={styles.eventRight}>
-                      <View style={styles.eventDateTime}>
-                        <Text style={styles.eventDate}>
-                          {formatDate(event.event_date)}
-                        </Text>
-                        <Text style={styles.eventTime}>
-                          {formatTime(event.event_date)}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteEvent(event.event_id)}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color="#e74c3c"
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
-              )}
-            </>
-          ) : (
-            <>
-              {todos.length === 0 ? (
-                <Text style={styles.emptyText}>
-                  No tasks yet. Tap + to add one!
-                </Text>
-              ) : (
-                todos.map((todo) => (
-                  <View
-                    key={todo.id}
-                    style={[
-                      styles.todoCard,
-                      todo.iscompleted && { opacity: 0.6 },
-                    ]}
-                  >
-                    <TouchableOpacity onPress={() => handleToggleTodo(todo)}>
-                      <Ionicons
-                        name={todo.iscompleted ? "checkbox" : "square-outline"}
-                        size={24}
-                        color="#2F459B"
-                      />
-                    </TouchableOpacity>
-                    <View style={styles.todoTextContainer}>
-                      <Text
-                        style={[
-                          styles.todoTitle,
-                          todo.iscompleted && {
-                            textDecorationLine: "line-through",
-                            color: "#999",
-                          },
-                        ]}
-                      >
-                        {todo.title}
+            events.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No upcoming events yet. Tap + to add one!
+              </Text>
+            ) : (
+              events.map((event) => (
+                <TouchableOpacity
+                  key={event.event_id}
+                  style={styles.eventCard}
+                  onPress={() => openEventModal(event)}
+                >
+                  <View style={styles.eventInfo}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    {event.description && (
+                      <Text style={styles.eventDesc} numberOfLines={1}>
+                        {event.description}
                       </Text>
-                      {todo.duedate && (
-                        <Text style={styles.todoDate}>
-                          {formatDate(todo.duedate)} {formatTime(todo.duedate)}
-                        </Text>
-                      )}
+                    )}
+                  </View>
+                  <View style={styles.eventRight}>
+                    <View style={styles.eventDateTime}>
+                      <Text style={styles.eventDate}>
+                        {formatDate(event.event_date)}
+                      </Text>
+                      <Text style={styles.eventTime}>
+                        {formatTime(event.event_date)}
+                      </Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteTodo(todo.id)}>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteEvent(event.event_id)}
+                    >
                       <Ionicons
                         name="trash-outline"
                         size={18}
@@ -421,9 +393,49 @@ export default function AdminCalendar() {
                       />
                     </TouchableOpacity>
                   </View>
-                ))
-              )}
-            </>
+                </TouchableOpacity>
+              ))
+            )
+          ) : todos.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No tasks yet. Tap + to add one!
+            </Text>
+          ) : (
+            todos.map((todo) => (
+              <View
+                key={todo.id}
+                style={[styles.todoCard, todo.iscompleted && { opacity: 0.6 }]}
+              >
+                <TouchableOpacity onPress={() => handleToggleTodo(todo)}>
+                  <Ionicons
+                    name={todo.iscompleted ? "checkbox" : "square-outline"}
+                    size={24}
+                    color="#2F459B"
+                  />
+                </TouchableOpacity>
+                <View style={styles.todoTextContainer}>
+                  <Text
+                    style={[
+                      styles.todoTitle,
+                      todo.iscompleted && {
+                        textDecorationLine: "line-through",
+                        color: "#999",
+                      },
+                    ]}
+                  >
+                    {todo.title}
+                  </Text>
+                  {todo.duedate && (
+                    <Text style={styles.todoDate}>
+                      {formatDate(todo.duedate)} {formatTime(todo.duedate)}
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteTodo(todo.id)}>
+                  <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+                </TouchableOpacity>
+              </View>
+            ))
           )}
         </View>
       </ScrollView>
@@ -431,11 +443,8 @@ export default function AdminCalendar() {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
-          if (activeTab === "Upcoming") {
-            router.push("/admin/add-event" as any);
-          } else {
-            router.push("/admin/todo" as any);
-          }
+          if (activeTab === "Upcoming") router.push("/admin/add-event" as any);
+          else router.push("/admin/todo" as any);
         }}
       >
         <Ionicons name="add" size={32} color="white" />
@@ -468,6 +477,76 @@ export default function AdminCalendar() {
           <Text style={styles.tabLabel}>Courses</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={eventModalVisible} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setEventModalVisible(false)}
+        >
+          <View
+            style={styles.eventModal}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.eventModalHeader}>
+              <View style={styles.eventModalIconWrap}>
+                <Ionicons name="calendar" size={22} color="#2F459B" />
+              </View>
+              <TouchableOpacity onPress={() => setEventModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#555" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
+
+            <View style={styles.eventModalRow}>
+              <Ionicons name="time-outline" size={16} color="#2F459B" />
+              <Text style={styles.eventModalMeta}>
+                {selectedEvent ? formatDate(selectedEvent.event_date) : ""} ·{" "}
+                {selectedEvent ? formatTime(selectedEvent.event_date) : ""}
+              </Text>
+            </View>
+
+            {selectedEvent?.description && (
+              <View style={styles.eventModalDescBox}>
+                <Text style={styles.eventModalDescLabel}>Description</Text>
+                <Text style={styles.eventModalDesc}>
+                  {selectedEvent.description}
+                </Text>
+              </View>
+            )}
+
+            {selectedEvent?.link && (
+              <TouchableOpacity
+                style={styles.eventModalLinkBtn}
+                onPress={() => Linking.openURL(selectedEvent.link)}
+              >
+                <Ionicons name="link-outline" size={16} color="#2F459B" />
+                <Text style={styles.eventModalLinkText} numberOfLines={1}>
+                  {selectedEvent.link}
+                </Text>
+                <Ionicons name="open-outline" size={14} color="#2F459B" />
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.eventModalActions}>
+              <TouchableOpacity
+                style={styles.eventModalDeleteBtn}
+                onPress={() => handleDeleteEvent(selectedEvent?.event_id)}
+              >
+                <Ionicons name="trash-outline" size={16} color="#e74c3c" />
+                <Text style={styles.eventModalDeleteText}>Delete Event</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.eventModalCloseBtn}
+                onPress={() => setEventModalVisible(false)}
+              >
+                <Text style={styles.eventModalCloseBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -569,12 +648,6 @@ const styles = StyleSheet.create({
   eventInfo: { flex: 1 },
   eventTitle: { fontSize: 16, fontWeight: "bold", color: "#444" },
   eventDesc: { fontSize: 12, color: "#777", marginTop: 3 },
-  eventLink: {
-    fontSize: 11,
-    color: "#2F459B",
-    textDecorationLine: "underline",
-    marginTop: 4,
-  },
   eventRight: { alignItems: "flex-end", justifyContent: "space-between" },
   eventDateTime: { alignItems: "flex-end" },
   eventDate: { fontSize: 12, fontWeight: "bold", color: "#7F8C8D" },
@@ -617,4 +690,94 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, alignItems: "center" },
   tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  eventModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+  },
+  eventModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  eventModalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EEF1FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  eventModalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1A1A2E",
+    marginBottom: 10,
+  },
+  eventModalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 16,
+  },
+  eventModalMeta: { fontSize: 13, color: "#666" },
+  eventModalDescBox: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  eventModalDescLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2F459B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  eventModalDesc: { fontSize: 14, color: "#444", lineHeight: 20 },
+  eventModalLinkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF1FF",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginBottom: 20,
+  },
+  eventModalLinkText: { flex: 1, fontSize: 12, color: "#2F459B" },
+  eventModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  eventModalDeleteBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e74c3c",
+    gap: 6,
+  },
+  eventModalDeleteText: { fontSize: 13, color: "#e74c3c", fontWeight: "600" },
+  eventModalCloseBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#2F459B",
+    alignItems: "center",
+  },
+  eventModalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 14 },
 });

@@ -5,11 +5,12 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -23,8 +24,9 @@ import HamburgerMenu from "./hamburger";
 export default function ProfileScreen() {
   const router = useRouter();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<any>(null);
+  const [refresh, setRefresh] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -45,6 +47,7 @@ export default function ProfileScreen() {
         lastName,
         middleName,
         email,
+        phoneNumber,
         profilephotourl,
         enrollment (
           curriculum!enrollment_curriculum_id_fkey (curriculumName),
@@ -70,6 +73,12 @@ export default function ProfileScreen() {
     (student?.enrollment as any)?.[0]?.specialization?.specializationName ??
     "—";
 
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchProfile();
+    setRefresh(false);
+  }, []);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -88,7 +97,6 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <HamburgerMenu onClose={() => setIsMenuVisible(false)} />
-
           <TouchableWithoutFeedback onPress={() => setIsMenuVisible(false)}>
             <View style={styles.clickableOverlay} />
           </TouchableWithoutFeedback>
@@ -99,15 +107,20 @@ export default function ProfileScreen() {
         <TouchableOpacity onPress={() => setIsMenuVisible(true)}>
           <Ionicons name="menu" size={28} color="white" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Profile</Text>
-
         <TouchableOpacity>
           <MaterialCommunityIcons name="qrcode-scan" size={24} color="white" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={onRefresh}
+            colors={["#0D2A94"]}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -123,7 +136,6 @@ export default function ProfileScreen() {
                 color="white"
               />
             </TouchableOpacity>
-
             <View style={styles.bannerGraphic}>
               <FontAwesome5
                 name="graduation-cap"
@@ -155,13 +167,28 @@ export default function ProfileScreen() {
           <View style={styles.detailsContainer}>
             {[
               { label: "Curriculum", value: curriculum },
-              { label: "Email", value: student?.email },
-              { label: "Contact Number", value: "0912-345-6789" },
+              { label: "Specialization", value: specialization },
+              { label: "Email", value: student?.email ?? "—" },
+              {
+                label: "Contact Number",
+                value: student?.phoneNumber?.trim()
+                  ? student.phoneNumber
+                  : "Not set",
+              },
             ].map((item, index) => (
               <View key={index} style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>{item.label}</Text>
                 <View style={styles.inputBox}>
-                  <Text style={styles.inputText}>{item.value}</Text>
+                  <Text
+                    style={[
+                      styles.inputText,
+                      !student?.phoneNumber?.trim() &&
+                        item.label === "Contact Number" &&
+                        styles.inputTextMuted,
+                    ]}
+                  >
+                    {item.value}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -207,9 +234,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
-  clickableOverlay: {
-    flex: 1,
-  },
+  clickableOverlay: { flex: 1 },
   header: {
     backgroundColor: "#0D2A94",
     height: 60,
@@ -261,6 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDFDFD",
   },
   inputText: { fontSize: 14, color: "#555" },
+  inputTextMuted: { color: "#BDC3C7", fontStyle: "italic" },
   bottomNav: {
     position: "absolute",
     bottom: 0,

@@ -360,7 +360,11 @@ export default function EnrollmentCodeScreen() {
         </View>
 
         {activeTab === "code" && (
-          <View style={styles.content}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.title}>Activate your Account</Text>
             <Text style={styles.subtitle}>
               Enter the 6-digit code provided by your administrator.
@@ -448,7 +452,7 @@ export default function EnrollmentCodeScreen() {
                 </>
               )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
 
         {activeTab === "status" && (
@@ -541,7 +545,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-
   tabRow: {
     flexDirection: "row",
     marginHorizontal: 24,
@@ -570,12 +573,11 @@ const styles = StyleSheet.create({
   },
   tabBtnText: { fontSize: 13, fontWeight: "600", color: "#999" },
   tabBtnTextActive: { color: "#0D2A94" },
-
   content: {
-    flex: 1,
+    paddingTop: 20,
     paddingHorizontal: 30,
+    paddingBottom: 40,
     alignItems: "center",
-    marginTop: 20,
   },
   title: {
     fontSize: 22,
@@ -652,9 +654,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    position: "absolute",
-    bottom: 40,
     elevation: 3,
+    marginTop: 40,
   },
   continueText: { color: "white", fontWeight: "bold", fontSize: 16 },
 

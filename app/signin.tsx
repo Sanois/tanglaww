@@ -67,7 +67,7 @@ export default function SignInScreen() {
       const { data: student, error: studentError } = await supabase
         .from("student")
         .select("id, firstName, lastName")
-        .eq("email", email.trim().toLowerCase())
+        .eq("auth_id", data.user.id)
         .single();
 
       if (studentError || !student) {

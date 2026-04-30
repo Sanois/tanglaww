@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -62,6 +63,7 @@ export default function AdminCourses() {
   const [actionLoadingId, setActionLoadingId] = useState<number | "all" | null>(
     null,
   );
+  const [refresh, setRefresh] = useState(false);
 
   useEffect(() => {
     fetchCourses();
@@ -88,6 +90,12 @@ export default function AdminCourses() {
     setCourses(coursesWithModules);
     setLoading(false);
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchCourses();
+    setRefresh(false);
+  }, []);
 
   const getAdminName = async (): Promise<string> => {
     if (!currentAdminId) return "Admin";
@@ -273,9 +281,7 @@ export default function AdminCourses() {
           onPress={() => toggleExpand(course.course_id)}
         >
           <View style={styles.imagePlaceholder}>
-            {/* Admin always sees the image placeholder, never locked */}
             <Ionicons name="image-outline" size={40} color="#CCC" />
-            {/* Locked badge for student-side context */}
           </View>
 
           <View style={styles.cardFooter}>
@@ -286,14 +292,12 @@ export default function AdminCourses() {
               </Text>
             </View>
             <View style={styles.cardActions}>
-              {/* Unlock button */}
               <TouchableOpacity
                 style={styles.keyBtn}
                 onPress={() => openModal(course, "unlock")}
               >
                 <Ionicons name="lock-open-outline" size={16} color="#27ae60" />
               </TouchableOpacity>
-              {/* Lock button */}
               <TouchableOpacity
                 style={[styles.keyBtn, { borderColor: "#e74c3c" }]}
                 onPress={() => openModal(course, "lock")}
@@ -377,6 +381,13 @@ export default function AdminCourses() {
         </View>
       ) : (
         <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refresh}
+              onRefresh={onRefresh}
+              colors={["#2F459B"]}
+            />
+          }
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -386,7 +397,6 @@ export default function AdminCourses() {
         </ScrollView>
       )}
 
-      {/* ── Unlock / Lock Modal ──────────────────────────────────────────────── */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
@@ -409,7 +419,6 @@ export default function AdminCourses() {
               </TouchableOpacity>
             </View>
 
-            {/* Bulk action button */}
             <TouchableOpacity
               style={[
                 styles.bulkBtn,

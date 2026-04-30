@@ -28,6 +28,7 @@ export default function ProfileSetupScreen() {
 
   const [firstName, setFirstName] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -136,6 +137,15 @@ export default function ProfileSetupScreen() {
         test: () => password === confirmPassword,
         message: "Passwords do not match.",
       },
+      {
+        test: () => {
+          if (!phoneNumber.trim()) return true;
+          const cleaned = phoneNumber.replace(/\s|-/g, "");
+          return /^(09|\+639)\d{9}$/.test(cleaned);
+        },
+        message:
+          "Please enter a valid Philippine mobile number (e.g. 0912-345-6789).",
+      },
     ];
     return rules.filter((rule) => !rule.test()).map((rule) => rule.message);
   };
@@ -169,6 +179,7 @@ export default function ProfileSetupScreen() {
         .update({
           auth_id: signUpData.user.id,
           isAccountSetup: true,
+          ...(phoneNumber.trim() ? { phoneNumber: phoneNumber.trim() } : {}),
           ...(photoUrl ? { profilephotourl: photoUrl } : {}),
         })
         .eq("id", studentId);
@@ -240,20 +251,48 @@ export default function ProfileSetupScreen() {
                 ? "Tap to change photo"
                 : "Upload Profile Picture (optional)"}
             </Text>
+
+            <View style={styles.photoNoteWrap}>
+              <Ionicons
+                name="information-circle-outline"
+                size={15}
+                color="#2F459B"
+              />
+              <Text style={styles.photoNote}>
+                We highly recommend using a clear, formal photo for your profile
+                picture.
+              </Text>
+            </View>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: "#888" }]}
                 editable={false}
                 value={firstName}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Create Password:*</Text>
+              <Text style={styles.label}>
+                Contact Number <Text style={styles.optional}>(optional)</Text>
+              </Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.inputInner}
+                  placeholder="e.g. 0912-345-6789"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Create Password *</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.inputInner}
@@ -276,7 +315,7 @@ export default function ProfileSetupScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm Password:*</Text>
+              <Text style={styles.label}>Confirm Password *</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.inputInner}
@@ -383,6 +422,22 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   avatarImage: { width: 100, height: 100, borderRadius: 50 },
+  photoNoteWrap: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#EEF1FF",
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    gap: 6,
+    maxWidth: 300,
+  },
+  photoNote: {
+    flex: 1,
+    fontSize: 12,
+    color: "#2F459B",
+    lineHeight: 17,
+  },
   form: { width: "100%" },
   inputGroup: { marginBottom: 20 },
   label: {
@@ -390,6 +445,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#0D2A94",
     marginBottom: 8,
+  },
+  optional: {
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#95A5A6",
   },
   input: {
     borderWidth: 1,

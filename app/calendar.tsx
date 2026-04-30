@@ -8,6 +8,7 @@ import {
   Dimensions,
   Linking,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -42,6 +43,9 @@ export default function CalendarScreen() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
   const [todos, setTodos] = useState<any[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [eventModalVisible, setEventModalVisible] = useState(false);
+  const [refresh, setRefresh] = useState(false);
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -57,6 +61,7 @@ export default function CalendarScreen() {
       setLoading(false);
       return;
     }
+
     const { data: eventData } = await supabase
       .from("calendar_events")
       .select("*")
@@ -74,7 +79,6 @@ export default function CalendarScreen() {
         .select("*")
         .eq("student_id", studentData.id)
         .order("dueDate", { ascending: true });
-
       setTodos(todoData ?? []);
     }
 
@@ -82,25 +86,28 @@ export default function CalendarScreen() {
     setLoading(false);
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchData();
+    setRefresh(false);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleToggleTodo = async (todo: any) => {
     const isCompleted = !todo.isCompleted;
-
     setTodos((prev) =>
       prev.map((t) => (t.todo_id === todo.todo_id ? { ...t, isCompleted } : t)),
     );
-
     const { error } = await supabase
       .from("to_do")
       .update({
-        isCompleted: isCompleted,
+        isCompleted,
         completedAt: isCompleted ? new Date().toISOString() : null,
       })
       .eq("todo_id", todo.todo_id);
-
     if (error) {
       Alert.alert("Error", error.message);
       setTodos((prev) =>
@@ -125,6 +132,11 @@ export default function CalendarScreen() {
     ]);
   };
 
+  const openEventModal = (event: any) => {
+    setSelectedEvent(event);
+    setEventModalVisible(true);
+  };
+
   const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const offset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
@@ -143,22 +155,18 @@ export default function CalendarScreen() {
     } else setCurrentMonth((m) => m + 1);
   };
 
-  const formatEventDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
+  const formatEventDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", {
+      month: "long",
       day: "numeric",
       year: "numeric",
     });
-  };
 
-  const formatEventTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("en-US", {
+  const formatEventTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const hasEvent = (day: number) =>
     events.some((e) => {
@@ -185,7 +193,7 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.container}>
       <Modal
         animationType="fade"
-        transparent={true}
+        transparent
         visible={isMenuVisible}
         onRequestClose={() => setIsMenuVisible(false)}
       >
@@ -206,6 +214,13 @@ export default function CalendarScreen() {
       </View>
 
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={onRefresh}
+            colors={["#0D2A94"]}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -221,17 +236,12 @@ export default function CalendarScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ paddingHorizontal: 10 }}></View>
         <View style={styles.calendarGrid}>
           {DAYS.map((day) => (
-            <Text
-              key={`day-${currentYear}-${currentMonth}-${day}`}
-              style={styles.dayLabel}
-            >
+            <Text key={`label-${day}`} style={styles.dayLabel}>
               {day}
             </Text>
           ))}
-
           {[...Array(offset)].map((_, i) => (
             <View key={`empty-${i}`} style={styles.dateBox} />
           ))}
@@ -241,15 +251,22 @@ export default function CalendarScreen() {
               day === selectedDate &&
               currentMonth === today.getMonth() &&
               currentYear === today.getFullYear();
-            const isToday =
-              day === today.getDate() &&
-              currentMonth === today.getMonth() &&
-              currentYear === today.getFullYear();
+            const dayEvents = events.filter((e) => {
+              const d = new Date(e.event_date);
+              return (
+                d.getDate() === day &&
+                d.getMonth() === currentMonth &&
+                d.getFullYear() === currentYear
+              );
+            });
             return (
               <TouchableOpacity
                 key={`day-${currentYear}-${currentMonth}-${day}`}
                 style={[styles.dateBox, isSelected && styles.selectedDate]}
-                onPress={() => setSelectedDate(day)}
+                onPress={() => {
+                  setSelectedDate(day);
+                  if (dayEvents.length >= 1) openEventModal(dayEvents[0]);
+                }}
               >
                 <Text
                   style={[
@@ -262,13 +279,11 @@ export default function CalendarScreen() {
                 <View style={styles.dotRow}>
                   {hasEvent(day) && (
                     <View
-                      key={`event-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#0D2A94" }]}
                     />
                   )}
                   {hasTodo(day) && (
                     <View
-                      key={`todo-dot-${day}`}
                       style={[styles.calDot, { backgroundColor: "#FFB800" }]}
                     />
                   )}
@@ -329,16 +344,13 @@ export default function CalendarScreen() {
                 <TouchableOpacity
                   key={event.event_id}
                   style={styles.eventCard}
-                  onPress={() => event.link && Linking.openURL(event.link)}
+                  onPress={() => openEventModal(event)}
                 >
                   <View style={styles.eventInfo}>
                     <Text style={styles.eventTitle}>{event.title}</Text>
                     {event.description && (
-                      <Text style={styles.eventDesc}>{event.description}</Text>
-                    )}
-                    {event.link && (
-                      <Text style={styles.eventLink} numberOfLines={1}>
-                        {event.link}
+                      <Text style={styles.eventDesc} numberOfLines={1}>
+                        {event.description}
                       </Text>
                     )}
                   </View>
@@ -440,6 +452,68 @@ export default function CalendarScreen() {
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={eventModalVisible} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.eventModalOverlay}
+          activeOpacity={1}
+          onPress={() => setEventModalVisible(false)}
+        >
+          <View
+            style={styles.eventModal}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.eventModalHeader}>
+              <View style={styles.eventModalIconWrap}>
+                <Ionicons name="calendar" size={22} color="#0D2A94" />
+              </View>
+              <TouchableOpacity onPress={() => setEventModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#555" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
+
+            <View style={styles.eventModalRow}>
+              <Ionicons name="time-outline" size={16} color="#0D2A94" />
+              <Text style={styles.eventModalMeta}>
+                {selectedEvent ? formatEventDate(selectedEvent.event_date) : ""}{" "}
+                ·{" "}
+                {selectedEvent ? formatEventTime(selectedEvent.event_date) : ""}
+              </Text>
+            </View>
+
+            {selectedEvent?.description && (
+              <View style={styles.eventModalDescBox}>
+                <Text style={styles.eventModalDescLabel}>Description</Text>
+                <Text style={styles.eventModalDesc}>
+                  {selectedEvent.description}
+                </Text>
+              </View>
+            )}
+
+            {selectedEvent?.link && (
+              <TouchableOpacity
+                style={styles.eventModalLinkBtn}
+                onPress={() => Linking.openURL(selectedEvent.link)}
+              >
+                <Ionicons name="link-outline" size={16} color="#0D2A94" />
+                <Text style={styles.eventModalLinkText} numberOfLines={1}>
+                  {selectedEvent.link}
+                </Text>
+                <Ionicons name="open-outline" size={14} color="#0D2A94" />
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.eventModalCloseBtn}
+              onPress={() => setEventModalVisible(false)}
+            >
+              <Text style={styles.eventModalCloseBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -496,17 +570,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   dateText: { color: "#2F459B", fontSize: 14 },
-  selectedDate: {
-    backgroundColor: "#FFD75E",
-    borderRadius: 25,
-  },
-  selectedDateText: {
-    fontWeight: "bold",
-    color: "#2F459B",
-  },
+  selectedDate: { backgroundColor: "#FFD75E", borderRadius: 25 },
+  selectedDateText: { fontWeight: "bold", color: "#2F459B" },
   dotRow: { flexDirection: "row", gap: 2, marginTop: 2 },
   calDot: { width: 5, height: 5, borderRadius: 3 },
-
   legend: {
     flexDirection: "row",
     justifyContent: "center",
@@ -515,7 +582,6 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   legendText: { fontSize: 11, color: "#666" },
-
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#0D2A94",
@@ -527,7 +593,6 @@ const styles = StyleSheet.create({
   activeTab: { borderBottomWidth: 4, borderBottomColor: "white" },
   tabText: { color: "rgba(255,255,255,0.6)", fontWeight: "bold" },
   activeTabText: { color: "white" },
-
   eventSection: { padding: 20 },
   emptyText: {
     color: "#999",
@@ -535,7 +600,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
   },
-
   eventCard: {
     flexDirection: "row",
     backgroundColor: "white",
@@ -548,16 +612,9 @@ const styles = StyleSheet.create({
   eventInfo: { flex: 1 },
   eventTitle: { fontSize: 16, fontWeight: "bold", color: "#555" },
   eventDesc: { fontSize: 12, color: "#777", marginTop: 3 },
-  eventLink: {
-    fontSize: 10,
-    color: "#2F459B",
-    textDecorationLine: "underline",
-    marginTop: 5,
-  },
   eventTimeContainer: { alignItems: "flex-end", justifyContent: "center" },
   eventDate: { fontSize: 12, color: "#7F8C8D" },
   eventTime: { fontSize: 12, fontWeight: "bold", color: "#7F8C8D" },
-
   todoCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -575,7 +632,6 @@ const styles = StyleSheet.create({
   todoTitleDone: { textDecorationLine: "line-through", color: "#999" },
   todoDesc: { fontSize: 12, color: "#777", marginTop: 3 },
   todoDate: { fontSize: 12, color: "#7F8C8D", marginTop: 4 },
-
   fab: {
     position: "absolute",
     right: 20,
@@ -602,4 +658,76 @@ const styles = StyleSheet.create({
   },
   navItem: { alignItems: "center" },
   navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
+  eventModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  eventModal: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+  },
+  eventModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  eventModalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EEF1FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  eventModalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1A1A2E",
+    marginBottom: 10,
+  },
+  eventModalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 16,
+  },
+  eventModalMeta: { fontSize: 13, color: "#666" },
+  eventModalDescBox: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  eventModalDescLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0D2A94",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  eventModalDesc: { fontSize: 14, color: "#444", lineHeight: 20 },
+  eventModalLinkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF1FF",
+    borderRadius: 8,
+    padding: 10,
+    gap: 8,
+    marginBottom: 20,
+  },
+  eventModalLinkText: { flex: 1, fontSize: 12, color: "#0D2A94" },
+  eventModalCloseBtn: {
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: "#0D2A94",
+    alignItems: "center",
+  },
+  eventModalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 14 },
 });

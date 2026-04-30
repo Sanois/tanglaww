@@ -156,8 +156,8 @@ export default function EnrollmentScreen() {
   ];
 
   const curriculumOptions = [
-    { id: 1, name: "BEEd" },
-    { id: 2, name: "BSEd" },
+    { id: 1, name: "Bachelor of Elementary Education (BEEd)" },
+    { id: 2, name: "Bachelor of Secondary Education (BSEd)" },
   ];
 
   const majorshipOptions = [
@@ -667,7 +667,10 @@ export default function EnrollmentScreen() {
               <Text style={styles.privacyContent}>
                 <Text style={styles.bold}>Teacher A Review Center</Text>{" "}
                 recognizes its responsibilities under the{" "}
-                <Text style={styles.bold}>RA 10173</Text>...
+                <Text style={styles.bold}>RA 10173</Text> also known as the{" "}
+                <Text style={styles.bold}>Data Privacy Act of 2012</Text> with
+                respect to the data they collect, record, organize, update, use,
+                consolidate or destruct from the data subject.
               </Text>
               <Text style={[styles.label, { color: "#c0392b" }]}>
                 * You must agree to proceed.
@@ -799,7 +802,7 @@ export default function EnrollmentScreen() {
               <Text style={styles.label}>First Name: *</Text>
               <TextInput
                 style={styles.input}
-                placeholder=" Juan"
+                placeholder="Juan"
                 placeholderTextColor="#666"
                 value={dataTypes.firstName}
                 onChangeText={(val) => setField("firstName", val)}
@@ -828,7 +831,7 @@ export default function EnrollmentScreen() {
                 value={dataTypes.email}
                 onChangeText={(val) => setField("email", val)}
               />
-              <Text style={styles.label}>Bachelor's Degree / Majorship: *</Text>
+              <Text style={styles.label}>Bachelor's Degree & Majorship: *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. BSEd English"
@@ -1065,12 +1068,7 @@ export default function EnrollmentScreen() {
                   <>
                     {summaryRow({
                       label: "Curriculum",
-                      value:
-                        dataTypes.curriculum === "BEEd"
-                          ? "Bachelor of Elementary Education (BEEd)"
-                          : dataTypes.curriculum === "BSEd"
-                            ? "Bachelor of Secondary Education (BSEd)"
-                            : "—",
+                      value: dataTypes.curriculum ?? "—",
                     })}
                     {summaryRow({
                       label: "Specialization",
@@ -1366,16 +1364,15 @@ const styles = StyleSheet.create({
     borderColor: "#b9770e",
     borderRadius: 8,
     padding: 12,
-    marginBottom: -20,
-    marginLeft: 12,
-    marginTop: 10,
-    width: 335,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 4,
   },
   warningText: {
     color: "#b9770e",
     fontSize: 13,
     lineHeight: 20,
-    fontWeight: "bold",
+    fontWeight: "regular",
   },
   required: { color: "#c0392b" },
   summaryIntro: {

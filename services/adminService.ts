@@ -38,7 +38,8 @@ export const adminService = {
                   id,
                   firstName, 
                   lastName, 
-                  email 
+                  email,
+                  profilephotourl
                   ),
                 paymentDetails (
                   referenceNumber,
@@ -49,7 +50,7 @@ export const adminService = {
                 type_of_taker!enrollment_typeOfTaker_id_fkey (typeOfTaker),
                 promo!enrollment_promo_id_fkey (promo),
                 verification!enrollment_verification_id_fkey (
-                    verificationStatus,
+                     verificationStatus,
                     verification_id,
                     verificationNotes
                 )`);

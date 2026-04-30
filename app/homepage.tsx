@@ -1,3 +1,4 @@
+import { clearSession, validateSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import {
   FontAwesome5,
@@ -11,6 +12,7 @@ import {
   Image,
   Modal,
   Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -32,6 +34,7 @@ export default function Homepage() {
     lastName: "",
   });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [refresh, setRefresh] = useState(false);
 
   const fetchAnnouncements = useCallback(async () => {
     const { data } = await supabase
@@ -40,6 +43,12 @@ export default function Homepage() {
       .order("created_at", { ascending: false })
       .limit(1);
     if (data) setAnnouncements(data);
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchAnnouncements();
+    setRefresh(false);
   }, []);
 
   useEffect(() => {
@@ -62,6 +71,18 @@ export default function Homepage() {
     fetchStudent();
     fetchAnnouncements();
   }, [fetchAnnouncements]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const { valid } = await validateSession();
+      if (!valid) {
+        await clearSession();
+        router.replace("/login");
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -97,6 +118,13 @@ export default function Homepage() {
       </View>
 
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={onRefresh}
+            colors={["#0D2A94"]}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >

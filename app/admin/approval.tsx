@@ -385,7 +385,11 @@ export default function AdminApproval() {
         <ScrollView
           style={styles.content}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#2F459B"]}
+            />
           }
         >
           <Text style={styles.sectionTitle}>Pending ({pending.length})</Text>

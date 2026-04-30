@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,7 @@ export default function AdminDashboard() {
     firstName: "",
     lastName: "",
   });
+  const [refresh, setRefresh] = useState(false);
 
   const fetchAnnouncements = useCallback(async () => {
     const { data } = await supabase
@@ -34,48 +36,56 @@ export default function AdminDashboard() {
     if (data) setAnnouncements(data);
   }, []);
 
-  useEffect(() => {
-    const fetchAdmin = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+  const fetchAdmin = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data } = await supabase
-        .from("admin")
-        .select("firstName, lastName")
-        .eq("admin_id", user.id)
-        .single();
+    const { data } = await supabase
+      .from("admin")
+      .select("firstName, lastName")
+      .eq("admin_id", user.id)
+      .single();
 
-      if (data)
-        setAdminName({ firstName: data.firstName, lastName: data.lastName });
-    };
+    if (data)
+      setAdminName({ firstName: data.firstName, lastName: data.lastName });
+  };
 
-    const fetchPending = async () => {
-      const { data } = await supabase
-        .from("enrollment")
-        .select(
-          `
+  const fetchPending = async () => {
+    const { data } = await supabase
+      .from("enrollment")
+      .select(
+        `
             enrollment_id,
             student (firstName, lastName),
             verification!enrollment_verification_id_fkey (verificationStatus)
         `,
-        )
-        .limit(3);
+      )
+      .limit(3);
 
-      const pending = (data ?? []).filter((e: any) => {
-        const v = Array.isArray(e.verification)
-          ? e.verification[0]
-          : e.verification;
-        return v?.verificationStatus === false;
-      });
-      setPendingEnrollments(pending);
-    };
+    const pending = (data ?? []).filter((e: any) => {
+      const v = Array.isArray(e.verification)
+        ? e.verification[0]
+        : e.verification;
+      return v?.verificationStatus === false;
+    });
+    setPendingEnrollments(pending);
+  };
 
+  useEffect(() => {
     fetchAdmin();
     fetchAnnouncements();
     fetchPending();
   }, [fetchAnnouncements]);
+
+  const onRefresh = useCallback(async () => {
+    setRefresh(true);
+    await fetchAnnouncements();
+    await fetchAdmin();
+    await fetchPending();
+    setRefresh(false);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -92,6 +102,13 @@ export default function AdminDashboard() {
       </View>
 
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={onRefresh}
+            colors={["#2F459B"]}
+          />
+        }
         style={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -373,7 +390,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CCC",
   },
-  approvalTextContainer: { flex: 1 },
+  approvalTextContainer: { flex: 1, marginLeft: 12 },
   approvalName: { fontSize: 16, fontWeight: "bold", color: "#2F459B" },
   approvalSub: { fontSize: 12, color: "#777" },
   tabBar: {

@@ -42,7 +42,7 @@ export const validateSession = async (): Promise<{
     const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
     const storedId = await AsyncStorage.getItem(STUDENT_ID_KEY);
 
-    if (!storedToken || !storedId) return { valid: true, studentId: null };
+    if (!storedToken || !storedId) return { valid: false, studentId: null };
 
     const studentId = parseInt(storedId);
 

@@ -95,7 +95,7 @@ export default function RegistrantDetails() {
         student (
           firstName, lastName, middleName,
           email, bachelorsDegree, lastSchoolAttended,
-          province, profilephotourl
+          province, profilephotourl, phoneNumber
         ),
         curriculum!enrollment_curriculum_id_fkey (curriculumName),
         specialization!enrollment_specialization_id_fkey (specializationName),
@@ -383,6 +383,11 @@ export default function RegistrantDetails() {
     ? enrollment.verification[0]
     : enrollment?.verification;
   const isAlreadyApproved = verification?.verificationStatus === true;
+  const statusColor = isAlreadyApproved
+    ? "#27ae60"
+    : verification?.verificationNotes
+      ? "#e74c3c"
+      : "#F39C12";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -390,13 +395,7 @@ export default function RegistrantDetails() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isAlreadyApproved
-            ? "Approved"
-            : verification?.verificationNotes
-              ? "Rejected"
-              : "Pending"}
-        </Text>
+        <Text style={styles.headerTitle}>Student Profile</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -415,6 +414,23 @@ export default function RegistrantDetails() {
           <Text style={styles.registrantSub}>
             {enrollment?.curriculum?.curriculumName ?? "—"}
           </Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: statusColor + "18", borderColor: statusColor },
+            ]}
+          >
+            <View
+              style={[styles.statusDot, { backgroundColor: statusColor }]}
+            />
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {isAlreadyApproved
+                ? "Approved"
+                : verification?.verificationNotes
+                  ? "Rejected"
+                  : "Pending"}
+            </Text>
+          </View>
         </View>
 
         <Text style={styles.sectionLabel}>Registrant Information:</Text>
@@ -442,6 +458,10 @@ export default function RegistrantDetails() {
           <DetailRow label="Degree" value={student?.bachelorsDegree} />
           <DetailRow label="Last School" value={student?.lastSchoolAttended} />
           <DetailRow label="Province" value={student?.province} />
+          <DetailRow
+            label="Contact Number"
+            value={student.phoneNumber?.trim() || "Not set"}
+          />
         </InfoRow>
 
         <InfoRow sectionKey="promo" title="Promotions & Verification">
@@ -1076,4 +1096,16 @@ const styles = StyleSheet.create({
   },
   reenrollAllowedText: { fontSize: 12, color: "#27ae60", flex: 1 },
   avatarImage: { width: 100, height: 100, borderRadius: 50 },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 10,
+    gap: 6,
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: "700" },
 });
