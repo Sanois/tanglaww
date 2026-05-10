@@ -107,7 +107,6 @@ export default function AddTodoScreen() {
           <TouchableOpacity
             style={styles.inputWithIcon}
             onPress={() => {
-              console.log("DATE CLICKED");
               setDatePicker(true);
             }}
           >
@@ -125,7 +124,6 @@ export default function AddTodoScreen() {
           <TouchableOpacity
             style={styles.inputWithIcon}
             onPress={() => {
-              console.log("TIME CLICKED");
               setTimePicker(true);
             }}
           >

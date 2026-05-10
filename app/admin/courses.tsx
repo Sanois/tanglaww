@@ -262,15 +262,27 @@ export default function AdminCourses() {
     const isExpanded = expandedCourse === course.course_id;
     const primaryModule = course.modules[0] ?? null;
 
-    const navigateTo = (screen: "handout" | "recorded-sessions") => {
-      if (!primaryModule) return;
-      router.push({
-        pathname: `/materials/${screen}` as any,
-        params: {
-          moduleId: String(primaryModule.module_id),
-          courseTitle: course.courseName,
-        },
-      });
+    const navigateTo = (
+      screen: "handout" | "recorded-sessions" | "quiz" | "session-links",
+    ) => {
+      if (screen === "handout" || screen === "recorded-sessions") {
+        if (!primaryModule) return;
+        router.push({
+          pathname: `/materials/${screen}` as any,
+          params: {
+            moduleId: String(primaryModule.module_id),
+            courseTitle: course.courseName,
+          },
+        });
+      } else {
+        router.push({
+          pathname: `/materials/${screen}` as any,
+          params: {
+            courseId: String(course.course_id),
+            courseTitle: course.courseName,
+          },
+        });
+      }
     };
 
     return (
@@ -337,11 +349,17 @@ export default function AdminCourses() {
               <Ionicons name="videocam-outline" size={20} color="#2F459B" />
               <Text style={styles.dropText}>Recorded Sessions</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dropItem}>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("quiz")}
+            >
               <Ionicons name="bulb-outline" size={20} color="#2F459B" />
               <Text style={styles.dropText}>Quiz</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dropItem}>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("session-links")}
+            >
               <Ionicons name="share-outline" size={20} color="#2F459B" />
               <Text style={styles.dropText}>Online Session Link</Text>
             </TouchableOpacity>
@@ -405,7 +423,7 @@ export default function AdminCourses() {
                 <Text
                   style={[
                     styles.modalTitle,
-                    { color: isUnlockMode ? "#27ae60" : "#e74c3c" },
+                    { color: isUnlockMode ? "#2F459B" : "#2F459B" },
                   ]}
                 >
                   {isUnlockMode ? "Unlock Course" : "Lock Course"}
@@ -432,7 +450,6 @@ export default function AdminCourses() {
                 <ActivityIndicator color="white" size="small" />
               ) : (
                 <>
-                  <Ionicons name="people-outline" size={18} color="white" />
                   <Text style={styles.bulkBtnText}>
                     {isUnlockMode
                       ? "Unlock for All Students"
@@ -468,11 +485,6 @@ export default function AdminCourses() {
                       {isUnlockMode ? (
                         student.hasAccess ? (
                           <View style={styles.accessBadge}>
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={16}
-                              color="#27ae60"
-                            />
                             <Text style={styles.accessBadgeText}>Unlocked</Text>
                           </View>
                         ) : (
@@ -512,11 +524,6 @@ export default function AdminCourses() {
                         </TouchableOpacity>
                       ) : (
                         <View style={styles.lockedBadgeSmall}>
-                          <Ionicons
-                            name="lock-closed"
-                            size={14}
-                            color="#e74c3c"
-                          />
                           <Text style={styles.lockedBadgeSmallText}>
                             Locked
                           </Text>

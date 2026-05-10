@@ -17,9 +17,11 @@ export type AuditAction =
   | "student_viewed_material"
   | "student_downloaded_material"
   | "student_viewed_session"
-  | "student_attempted_assessment"
-  | "student_passed_assessment"
-  | "student_failed_assessment";
+  | "student_opened_quiz"
+  | "student_attempted_quiz"
+  | "student_passed_quiz"
+  | "student_failed_quiz"
+  | "student_joined_session";
 
 interface AuditPayload {
   actorType: "admin" | "student";
@@ -30,7 +32,7 @@ interface AuditPayload {
     | "student"
     | "course"
     | "material"
-    | "assessment"
+    | "quiz"
     | "enrollment"
     | "session";
   targetId?: string;
@@ -75,9 +77,11 @@ export function getActionLabel(action: string): string {
     student_viewed_material: "Viewed Material",
     student_downloaded_material: "Downloaded Material",
     student_viewed_session: "Viewed Recorded Session",
-    student_attempted_assessment: "Attempted Assessment",
-    student_passed_assessment: "Passed Assessment",
-    student_failed_assessment: "Failed Assessment",
+    student_opened_quiz: "Viewed Quiz",
+    student_attempted_quiz: "Attempted Quiz",
+    student_passed_quiz: "Passed Quiz",
+    student_failed_quiz: "Failed Quiz",
+    student_joined_session: "Joined Session",
   };
   return labels[action] ?? action;
 }

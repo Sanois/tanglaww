@@ -166,7 +166,7 @@ export default function SignInScreen() {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 {errors.map((e, i) => (
                   <Text key={i} style={styles.errorText}>
-                    • {e}
+                    {e}
                   </Text>
                 ))}
               </View>

@@ -4,15 +4,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    RefreshControl,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface AuditLog {
@@ -97,7 +97,6 @@ export default function AuditLogScreen() {
 
     return (
       <View style={styles.logRow}>
-        {/* Timeline line */}
         <View style={styles.timelineCol}>
           <View style={[styles.dot, { backgroundColor: actionColor }]} />
           {index < filteredLogs.length - 1 && (
@@ -166,7 +165,6 @@ export default function AuditLogScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="black" />
@@ -184,7 +182,6 @@ export default function AuditLogScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View style={styles.searchBox}>
         <Ionicons name="search" size={18} color="#999" />
         <TextInput
@@ -201,7 +198,6 @@ export default function AuditLogScreen() {
         )}
       </View>
 
-      {/* Filter tabs */}
       <View style={styles.filterRow}>
         {FILTERS.map((f) => (
           <TouchableOpacity

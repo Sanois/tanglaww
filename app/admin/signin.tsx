@@ -24,7 +24,7 @@ export default function AdminSignIn() {
   const handleAdminSignIn = async () => {
     const newErrors: string[] = [];
     if (!email.trim() || !password.trim()) {
-      newErrors.push("Administrator credentials are required.");
+      newErrors.push("Kindly fill in all necessary information.");
     }
     if (newErrors.length > 0) {
       setErrors(newErrors);
@@ -117,7 +117,7 @@ export default function AdminSignIn() {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 {errors.map((e, i) => (
                   <Text key={i} style={styles.errorText}>
-                    • {e}
+                    {e}
                   </Text>
                 ))}
               </View>

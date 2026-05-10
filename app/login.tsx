@@ -125,20 +125,20 @@ export default function LoginScreen() {
           <View style={styles.buttonContainer}>
             <View style={styles.buttonWrapper}>
               <TouchableOpacity
-                style={styles.signInBtn}
+                style={styles.enrollBtn}
                 onPress={() => router.push("/signin")}
               >
-                <Text style={styles.signInText}>Sign-in</Text>
+                <Text style={styles.enrollText}>Sign-in</Text>
               </TouchableOpacity>
               <Text style={styles.subLabel}>For Existing users</Text>
             </View>
 
             <View style={styles.buttonWrapper}>
               <TouchableOpacity
-                style={styles.enrollBtn}
+                style={styles.signInBtn}
                 onPress={() => router.push("/enroll")}
               >
-                <Text style={styles.enrollText}>Enroll Now</Text>
+                <Text style={styles.signInText}>Enroll Now</Text>
               </TouchableOpacity>
               <Text style={styles.subLabel}>For New users</Text>
             </View>
@@ -230,8 +230,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 30,
     right: 20,
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     borderRadius: 24,
     backgroundColor: "white",
     justifyContent: "center",
@@ -275,7 +275,7 @@ const contactStyles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFD75E",
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
   },
