@@ -5,19 +5,19 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Linking,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useAdmin } from "../../context/AdminContext";
 import { logAudit } from "../../services/auditService";
@@ -28,6 +28,7 @@ interface SessionEvent {
   link: string | null;
   description: string | null;
   event_date: string;
+  course_id: number | null;
 }
 
 const formatDate = (iso: string) =>
@@ -51,7 +52,6 @@ export default function SessionLinkScreen() {
   const [sessions, setSessions] = useState<SessionEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add modal state
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newLink, setNewLink] = useState("");
@@ -65,7 +65,8 @@ export default function SessionLinkScreen() {
     setLoading(true);
     const { data, error } = await supabase
       .from("calendar_events")
-      .select("event_id, title, link, description, event_date")
+      .select("event_id, title, link, description, event_date, course_id")
+      .eq("course_id", courseId)
       .order("event_date", { ascending: true });
 
     if (error) console.error("fetchSessions:", error.message);
@@ -99,6 +100,7 @@ export default function SessionLinkScreen() {
       link: newLink.trim(),
       description: newDescription.trim() || null,
       event_date: newDate.toISOString(),
+      course_id: courseId,
     });
     setSaving(false);
     if (error) {
@@ -211,15 +213,6 @@ export default function SessionLinkScreen() {
             <Text style={styles.fileName} numberOfLines={2}>
               {item.title}
             </Text>
-            {upcoming ? (
-              <View style={styles.upcomingBadge}>
-                <Text style={styles.upcomingText}>Upcoming</Text>
-              </View>
-            ) : (
-              <View style={styles.pastBadge}>
-                <Text style={styles.pastText}>Past</Text>
-              </View>
-            )}
           </View>
           <Text style={styles.fileSub}>{formatDate(item.event_date)}</Text>
           {item.description ? (

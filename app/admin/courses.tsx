@@ -538,31 +538,31 @@ export default function AdminCourses() {
         </View>
       </Modal>
 
-      <View style={styles.tabBar}>
+      <View style={styles.bottomNav}>
         <TouchableOpacity
-          style={styles.tabItem}
+          style={styles.navItem}
           onPress={() => router.push("/admin/dashboard")}
         >
           <Ionicons name="home-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Home</Text>
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="school-outline" size={24} color="#FFD75E" />
+          <Text style={[styles.navText, { color: "#FFD75E " }]}>Courses</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.tabItem}
+          style={styles.navItem}
+          onPress={() => router.push("/admin/calendar")}
+        >
+          <Ionicons name="calendar" size={24} color="#2F459B" />
+          <Text style={styles.navText}>Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
           onPress={() => router.push("/admin/approval")}
         >
           <Ionicons name="person-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Approvals</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/calendar")}
-        >
-          <Ionicons name="calendar-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="school" size={24} color="#FFD75E" />
-          <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Courses</Text>
+          <Text style={styles.navText}>Approvals</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -657,18 +657,20 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     textDecorationLine: "underline",
   },
-  tabBar: {
+  bottomNav: {
     position: "absolute",
     bottom: 0,
-    flexDirection: "row",
+    width: "100%",
+    height: 70,
     backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#EEE",
-    paddingVertical: 10,
-    width: "100%",
   },
-  tabItem: { flex: 1, alignItems: "center" },
-  tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
+  navItem: { alignItems: "center" },
+  navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

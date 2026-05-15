@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Linking,
   Modal,
   RefreshControl,
@@ -15,11 +14,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import AdminHamburger from "./hamburger";
 
-const { width } = Dimensions.get("window");
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
   "January",
@@ -38,6 +37,8 @@ const MONTHS = [
 
 export default function AdminCalendar() {
   const router = useRouter();
+
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -150,7 +151,7 @@ export default function AdminCalendar() {
   const handleTabChange = (tabName: string, index: number) => {
     setActiveTab(tabName);
     Animated.spring(tabSlideAnim, {
-      toValue: index * ((width - 40) / 2),
+      toValue: index * (width / 2 - 20),
       useNativeDriver: false,
       friction: 10,
       tension: 50,
@@ -348,7 +349,9 @@ export default function AdminCalendar() {
               </Text>
             </TouchableOpacity>
           </View>
-          <Animated.View style={[styles.underline, { left: tabSlideAnim }]} />
+          <Animated.View
+            style={[styles.underline, { left: tabSlideAnim, width: "50%" }]}
+          />
         </View>
 
         <View style={styles.listContainer}>
@@ -425,6 +428,11 @@ export default function AdminCalendar() {
                   >
                     {todo.title}
                   </Text>
+                  {todo.description && (
+                    <Text style={styles.eventDesc} numberOfLines={1}>
+                      {todo.description}
+                    </Text>
+                  )}
                   {todo.duedate && (
                     <Text style={styles.todoDate}>
                       {formatDate(todo.duedate)} {formatTime(todo.duedate)}
@@ -450,31 +458,31 @@ export default function AdminCalendar() {
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
-      <View style={styles.tabBar}>
+      <View style={styles.bottomNav}>
         <TouchableOpacity
-          style={styles.tabItem}
+          style={styles.navItem}
           onPress={() => router.push("/admin/dashboard")}
         >
           <Ionicons name="home-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Home</Text>
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/approval")}
-        >
-          <Ionicons name="person-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Approvals</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="calendar" size={24} color="#FFD75E" />
-          <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
+          style={styles.navItem}
           onPress={() => router.push("/admin/courses")}
         >
           <Ionicons name="school-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Courses</Text>
+          <Text style={styles.navText}>Courses</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="calendar" size={24} color="#FFD75E" />
+          <Text style={[styles.navText, { color: "#FFD75E" }]}>Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/admin/approval")}
+        >
+          <Ionicons name="person-outline" size={24} color="#2F459B" />
+          <Text style={styles.navText}>Approvals</Text>
         </TouchableOpacity>
       </View>
 
@@ -488,17 +496,22 @@ export default function AdminCalendar() {
             style={styles.eventModal}
             onStartShouldSetResponder={() => true}
           >
-            <View style={styles.eventModalHeader}>
-              <View style={styles.eventModalIconWrap}>
-                <Ionicons name="calendar" size={22} color="#2F459B" />
-              </View>
-              <TouchableOpacity onPress={() => setEventModalVisible(false)}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 4,
+              }}
+            >
+              <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
+
+              <TouchableOpacity
+                onPress={() => setEventModalVisible(false)}
+                style={{ marginLeft: "auto" }}
+              >
                 <Ionicons name="close" size={24} color="#555" />
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
-
             <View style={styles.eventModalRow}>
               <Ionicons name="time-outline" size={16} color="#2F459B" />
               <Text style={styles.eventModalMeta}>
@@ -582,7 +595,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dayLabel: {
-    width: (width - 30) / 7,
+    width: "14.28%",
     textAlign: "center",
     color: "#BDC3C7",
     fontSize: 13,
@@ -590,7 +603,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   dateBox: {
-    width: (width - 30) / 7,
+    width: "14.28%",
     height: 48,
     justifyContent: "center",
     alignItems: "center",
@@ -623,7 +636,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     height: 4,
-    width: (width - 40) / 2,
     backgroundColor: "white",
     borderRadius: 2,
   },
@@ -678,24 +690,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 5,
   },
-  tabBar: {
+  bottomNav: {
     position: "absolute",
     bottom: 0,
-    flexDirection: "row",
+    width: "100%",
+    height: 70,
     backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#EEE",
-    paddingVertical: 10,
-    width: "100%",
   },
-  tabItem: { flex: 1, alignItems: "center" },
-  tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
+  navItem: { alignItems: "center" },
+  navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+    position: "relative",
   },
   eventModal: {
     backgroundColor: "white",
@@ -721,7 +736,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#1A1A2E",
-    marginBottom: 10,
+    marginBottom: 3,
   },
   eventModalRow: {
     flexDirection: "row",

@@ -1,11 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
+  Animated,
   Linking,
   Modal,
   RefreshControl,
@@ -15,11 +15,11 @@ import {
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   View,
 } from "react-native";
 import HamburgerMenu from "./hamburger";
 
-const { width } = Dimensions.get("window");
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
   "January",
@@ -38,6 +38,7 @@ const MONTHS = [
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState("Events");
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,6 +47,7 @@ export default function CalendarScreen() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [refresh, setRefresh] = useState(false);
+  const tabSlideAnim = useRef(new Animated.Value(0)).current;
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -135,6 +137,16 @@ export default function CalendarScreen() {
   const openEventModal = (event: any) => {
     setSelectedEvent(event);
     setEventModalVisible(true);
+  };
+
+  const handleTabChange = (tabName: string, index: number) => {
+    setActiveTab(tabName);
+    Animated.spring(tabSlideAnim, {
+      toValue: index * (width / 2 - 20),
+      useNativeDriver: false,
+      friction: 10,
+      tension: 50,
+    }).start();
   };
 
   const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
@@ -306,21 +318,21 @@ export default function CalendarScreen() {
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "Events" && styles.activeTab]}
-            onPress={() => setActiveTab("Events")}
+            style={styles.tab}
+            onPress={() => handleTabChange("Upcoming", 0)}
           >
             <Text
               style={[
                 styles.tabText,
-                activeTab === "Events" && styles.activeTabText,
+                activeTab === "Upcoming" && styles.activeTabText,
               ]}
             >
               Upcoming Events
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "To Do" && styles.activeTab]}
-            onPress={() => setActiveTab("To Do")}
+            style={styles.tab}
+            onPress={() => handleTabChange("To Do", 1)}
           >
             <Text
               style={[
@@ -331,6 +343,9 @@ export default function CalendarScreen() {
               To Do List
             </Text>
           </TouchableOpacity>
+          <Animated.View
+            style={[styles.underline, { left: tabSlideAnim, width: "50%" }]}
+          />
         </View>
 
         <View style={styles.eventSection}>
@@ -555,7 +570,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dayLabel: {
-    width: (width - 30) / 7,
+    width: "14.28%",
     textAlign: "center",
     color: "#BDC3C7",
     fontSize: 13,
@@ -563,7 +578,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   dateBox: {
-    width: (width - 30) / 7,
+    width: "14.28%",
     height: 48,
     justifyContent: "center",
     alignItems: "center",
@@ -730,4 +745,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eventModalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 14 },
+  underline: {
+    position: "absolute",
+    bottom: 0,
+    height: 4,
+    backgroundColor: "white",
+    borderRadius: 2,
+  },
 });
