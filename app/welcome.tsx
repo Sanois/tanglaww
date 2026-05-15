@@ -1,6 +1,7 @@
 import { useConnectivityCheck } from "@/services/connectivityCheck";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -35,6 +36,12 @@ export default function WelcomeScreen() {
     },
   ];
 
+  useEffect(() => {
+    AsyncStorage.getItem("hasSeenWelcome").then((value) => {
+      if (value === "true") router.replace("/login");
+    });
+  }, []);
+
   const handleNext = () => {
     if (isOnline === false) {
       Alert.alert("No internet", "Please connect to the internet to continue.");
@@ -44,6 +51,7 @@ export default function WelcomeScreen() {
     if (currentStep < slides.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      AsyncStorage.setItem("hasSeenWelcome", "true");
       router.push("/login");
     }
   };
@@ -72,6 +80,7 @@ export default function WelcomeScreen() {
             <TouchableOpacity
               onPress={() => {
                 if (isOnline === false) return;
+                AsyncStorage.setItem("hasSeenWelcome", "true");
                 router.push("/login");
               }}
             >
