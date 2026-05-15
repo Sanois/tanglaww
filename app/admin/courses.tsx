@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -44,6 +45,156 @@ interface EnrolledStudent {
   email: string;
   hasAccess: boolean;
 }
+
+const courseImages: Record<number, any> = {
+  1: require("../../assets/images/let-on-boarding.jpg"),
+  2: require("../../assets/images/let-express.jpg"),
+  3: require("../../assets/images/let-advanced.jpg"),
+  4: require("../../assets/images/integrative.jpg"),
+  5: require("../../assets/images/final-coaching.jpg"),
+  6: require("../../assets/images/test-highlights.jpg"),
+};
+
+const CourseCard = React.memo(
+  ({
+    course,
+    expandedCourse,
+    toggleExpand,
+    openModal,
+    router,
+  }: {
+    course: Course;
+    expandedCourse: number | null;
+    toggleExpand: (id: number) => void;
+    openModal: (course: Course, mode: "unlock" | "lock") => void;
+    router: any;
+  }) => {
+    const isExpanded = expandedCourse === course.course_id;
+    const primaryModule = course.modules[0] ?? null;
+
+    const navigateTo = (
+      screen: "handout" | "recorded-sessions" | "quiz" | "session-links",
+    ) => {
+      if (screen === "handout" || screen === "recorded-sessions") {
+        if (!primaryModule) return;
+        router.push({
+          pathname: `/materials/${screen}` as any,
+          params: {
+            moduleId: String(primaryModule.module_id),
+            courseTitle: course.courseName,
+          },
+        });
+      } else {
+        router.push({
+          pathname: `/materials/${screen}` as any,
+          params: {
+            courseId: String(course.course_id),
+            courseTitle: course.courseName,
+          },
+        });
+      }
+    };
+
+    return (
+      <View style={styles.cardContainer}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.courseCard}
+          onPress={() => toggleExpand(course.course_id)}
+        >
+          <View style={styles.imagePlaceholder}>
+            {courseImages[course.course_id] ? (
+              <Image
+                source={courseImages[course.course_id]}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Ionicons name="image-outline" size={40} color="#CCC" />
+            )}
+          </View>
+
+          <View style={styles.cardFooter}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.courseTitle}>{course.courseName}</Text>
+              <Text style={styles.instructorText}>
+                {course.instructor ?? "—"}
+              </Text>
+            </View>
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.keyBtn}
+                onPress={() => openModal(course, "unlock")}
+              >
+                <Ionicons name="lock-open-outline" size={16} color="#27ae60" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.keyBtn, { borderColor: "#e74c3c" }]}
+                onPress={() => openModal(course, "lock")}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={16}
+                  color="#e74c3c"
+                />
+              </TouchableOpacity>
+              <Ionicons
+                name={isExpanded ? "chevron-up" : "chevron-down"}
+                size={24}
+                color="#2F459B"
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.dropdownContent}>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("handout")}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color="#2F459B"
+              />
+              <Text style={styles.dropText}>Handouts</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("recorded-sessions")}
+            >
+              <Ionicons name="videocam-outline" size={20} color="#2F459B" />
+              <Text style={styles.dropText}>Recorded Sessions</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("quiz")}
+            >
+              <Ionicons name="bulb-outline" size={20} color="#2F459B" />
+              <Text style={styles.dropText}>Quiz</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dropItem}
+              onPress={() => navigateTo("session-links")}
+            >
+              <Ionicons name="share-outline" size={20} color="#2F459B" />
+              <Text style={styles.dropText}>Online Session Link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.dropItem, { borderBottomWidth: 0 }]}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#BDC3C7" />
+              <Text style={[styles.dropText, { color: "#BDC3C7" }]}>
+                Add new section
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  },
+);
 
 export default function AdminCourses() {
   const router = useRouter();
@@ -107,31 +258,34 @@ export default function AdminCourses() {
     return data ? `${data.firstName} ${data.lastName}` : "Admin";
   };
 
-  const openModal = async (course: Course, mode: "unlock" | "lock") => {
-    setSelectedCourse(course);
-    setModalMode(mode);
-    setModalVisible(true);
-    setStudentsLoading(true);
+  const openModal = useCallback(
+    async (course: Course, mode: "unlock" | "lock") => {
+      setSelectedCourse(course);
+      setModalMode(mode);
+      setModalVisible(true);
+      setStudentsLoading(true);
 
-    const { data: students } = await supabase
-      .from("student")
-      .select("id, firstName, lastName, email")
-      .eq("isAccountSetup", true)
-      .order("firstName");
+      const { data: students } = await supabase
+        .from("student")
+        .select("id, firstName, lastName, email")
+        .eq("isAccountSetup", true)
+        .order("firstName");
 
-    const { data: accessRows } = await supabase
-      .from("course_access")
-      .select("student_id")
-      .eq("course_id", course.course_id);
+      const { data: accessRows } = await supabase
+        .from("course_access")
+        .select("student_id")
+        .eq("course_id", course.course_id);
 
-    const accessSet = new Set((accessRows ?? []).map((r) => r.student_id));
+      const accessSet = new Set((accessRows ?? []).map((r) => r.student_id));
 
-    setEnrolledStudents(
-      (students ?? []).map((s) => ({ ...s, hasAccess: accessSet.has(s.id) })),
-    );
+      setEnrolledStudents(
+        (students ?? []).map((s) => ({ ...s, hasAccess: accessSet.has(s.id) })),
+      );
 
-    setStudentsLoading(false);
-  };
+      setStudentsLoading(false);
+    },
+    [currentAdminId],
+  );
 
   const handleUnlockSingle = async (student: EnrolledStudent) => {
     if (!selectedCourse || !currentAdminId) return;
@@ -254,128 +408,9 @@ export default function AdminCourses() {
     );
   };
 
-  const toggleExpand = (courseId: number) => {
-    setExpandedCourse(expandedCourse === courseId ? null : courseId);
-  };
-
-  const CourseCard = ({ course }: { course: Course }) => {
-    const isExpanded = expandedCourse === course.course_id;
-    const primaryModule = course.modules[0] ?? null;
-
-    const navigateTo = (
-      screen: "handout" | "recorded-sessions" | "quiz" | "session-links",
-    ) => {
-      if (screen === "handout" || screen === "recorded-sessions") {
-        if (!primaryModule) return;
-        router.push({
-          pathname: `/materials/${screen}` as any,
-          params: {
-            moduleId: String(primaryModule.module_id),
-            courseTitle: course.courseName,
-          },
-        });
-      } else {
-        router.push({
-          pathname: `/materials/${screen}` as any,
-          params: {
-            courseId: String(course.course_id),
-            courseTitle: course.courseName,
-          },
-        });
-      }
-    };
-
-    return (
-      <View style={styles.cardContainer}>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.courseCard}
-          onPress={() => toggleExpand(course.course_id)}
-        >
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={40} color="#CCC" />
-          </View>
-
-          <View style={styles.cardFooter}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.courseTitle}>{course.courseName}</Text>
-              <Text style={styles.instructorText}>
-                {course.instructor ?? "—"}
-              </Text>
-            </View>
-            <View style={styles.cardActions}>
-              <TouchableOpacity
-                style={styles.keyBtn}
-                onPress={() => openModal(course, "unlock")}
-              >
-                <Ionicons name="lock-open-outline" size={16} color="#27ae60" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.keyBtn, { borderColor: "#e74c3c" }]}
-                onPress={() => openModal(course, "lock")}
-              >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={16}
-                  color="#e74c3c"
-                />
-              </TouchableOpacity>
-              <Ionicons
-                name={isExpanded ? "chevron-up" : "chevron-down"}
-                size={24}
-                color="#2F459B"
-              />
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.dropdownContent}>
-            <TouchableOpacity
-              style={styles.dropItem}
-              onPress={() => navigateTo("handout")}
-            >
-              <Ionicons
-                name="document-text-outline"
-                size={20}
-                color="#2F459B"
-              />
-              <Text style={styles.dropText}>Handouts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dropItem}
-              onPress={() => navigateTo("recorded-sessions")}
-            >
-              <Ionicons name="videocam-outline" size={20} color="#2F459B" />
-              <Text style={styles.dropText}>Recorded Sessions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dropItem}
-              onPress={() => navigateTo("quiz")}
-            >
-              <Ionicons name="bulb-outline" size={20} color="#2F459B" />
-              <Text style={styles.dropText}>Quiz</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dropItem}
-              onPress={() => navigateTo("session-links")}
-            >
-              <Ionicons name="share-outline" size={20} color="#2F459B" />
-              <Text style={styles.dropText}>Online Session Link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.dropItem, { borderBottomWidth: 0 }]}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#BDC3C7" />
-              <Text style={[styles.dropText, { color: "#BDC3C7" }]}>
-                Add new section
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
+  const toggleExpand = useCallback((courseId: number) => {
+    setExpandedCourse((prev) => (prev === courseId ? null : courseId));
+  }, []);
 
   const isUnlockMode = modalMode === "unlock";
 
@@ -410,7 +445,14 @@ export default function AdminCourses() {
           showsVerticalScrollIndicator={false}
         >
           {courses.map((course) => (
-            <CourseCard key={course.course_id} course={course} />
+            <CourseCard
+              key={course.course_id}
+              course={course}
+              expandedCourse={expandedCourse}
+              toggleExpand={toggleExpand}
+              openModal={openModal}
+              router={router}
+            />
           ))}
         </ScrollView>
       )}

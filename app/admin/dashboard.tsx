@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   const [pendingEnrollments, setPendingEnrollments] = useState<any[]>([]);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [affirmations, setAffirmations] = useState<any[]>([]);
   const [adminName, setAdminName] = useState({
     firstName: "",
     lastName: "",
@@ -34,6 +35,15 @@ export default function AdminDashboard() {
       .order("created_at", { ascending: false })
       .limit(1);
     if (data) setAnnouncements(data);
+  }, []);
+
+  const fetchAffirmations = useCallback(async () => {
+    const { data } = await supabase
+      .from("affirmation")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (data) setAffirmations(data);
   }, []);
 
   const fetchAdmin = async () => {
@@ -76,11 +86,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAdmin();
     fetchAnnouncements();
+    fetchAffirmations();
     fetchPending();
   }, [fetchAnnouncements]);
 
   const onRefresh = useCallback(async () => {
     setRefresh(true);
+    await fetchAffirmations();
     await fetchAnnouncements();
     await fetchAdmin();
     await fetchPending();
@@ -142,7 +154,7 @@ export default function AdminDashboard() {
             <Ionicons name="megaphone-outline" size={20} color="#2F459B" />
             <Text style={styles.cardTitle}>Announcements</Text>
             <TouchableOpacity
-              onPress={() => router.push("/admin/notification")}
+              onPress={() => router.push("/admin/announcements")}
             >
               <Ionicons name="pencil-outline" size={18} color="#555" />
             </TouchableOpacity>
@@ -177,10 +189,32 @@ export default function AdminDashboard() {
           <View style={styles.cardHeader}>
             <Ionicons name="heart-outline" size={20} color="#2F459B" />
             <Text style={styles.cardTitle}>Daily Affirmation</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/admin/affirmations")}
+            >
+              <Ionicons name="pencil-outline" size={18} color="#555" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.affirmationText}>
-            "The secret of getting ahead is getting started."
-          </Text>
+          {affirmations.length === 0 ? (
+            <Text style={styles.cardBody}>No affirmation yet.</Text>
+          ) : (
+            affirmations.map((a, i) => (
+              <View key={a.id ?? i}>
+                <Text
+                  style={[
+                    styles.cardBody,
+                    {
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    },
+                  ]}
+                >
+                  {a.content}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.sectionRow}>
@@ -225,37 +259,31 @@ export default function AdminDashboard() {
         )}
       </ScrollView>
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/dashboard")}
-        >
-          <Ionicons name="home" size={24} color="#FFD75E" />
-          <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Home</Text>
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="home-outline" size={24} color="#FFD75E" />
+          <Text style={[styles.navText, { color: "#FFD75E" }]}>Home</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/approval")}
-        >
-          <Ionicons name="person-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Approvals</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/calendar")}
-        >
-          <Ionicons name="calendar-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Calendar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
+          style={styles.navItem}
           onPress={() => router.push("/admin/courses")}
         >
           <Ionicons name="school-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Courses</Text>
+          <Text style={styles.navText}>Courses</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/admin/calendar")}
+        >
+          <Ionicons name="calendar" size={24} color="#2F459B" />
+          <Text style={styles.navText}>Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/admin/approval")}
+        >
+          <Ionicons name="person-outline" size={24} color="#2F459B" />
+          <Text style={styles.navText}>Approvals</Text>
         </TouchableOpacity>
       </View>
 
@@ -393,16 +421,18 @@ const styles = StyleSheet.create({
   approvalTextContainer: { flex: 1, marginLeft: 12 },
   approvalName: { fontSize: 16, fontWeight: "bold", color: "#2F459B" },
   approvalSub: { fontSize: 12, color: "#777" },
-  tabBar: {
+  bottomNav: {
     position: "absolute",
     bottom: 0,
-    flexDirection: "row",
+    width: "100%",
+    height: 70,
     backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#EEE",
-    paddingVertical: 10,
-    width: "100%",
   },
-  tabItem: { flex: 1, alignItems: "center" },
-  tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
+  navItem: { alignItems: "center" },
+  navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
 });

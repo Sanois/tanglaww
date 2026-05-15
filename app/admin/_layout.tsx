@@ -14,6 +14,8 @@ export default function RootLayout() {
       <Stack.Screen name="todo" />
       <Stack.Screen name="add-event" />
       <Stack.Screen name="notification" />
+      <Stack.Screen name="announcements" />
+      <Stack.Screen name="affirmations" />
     </Stack>
   );
 }

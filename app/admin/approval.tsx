@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AdminHamburger from "./hamburger";
 
 const generateCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -56,6 +57,7 @@ export default function AdminApproval() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
+  const [menuVisible, setMenuVisible] = useState(false);
   const [codeModal, setCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [emailSent, setEmailSent] = useState<boolean | null>(null);
@@ -373,11 +375,16 @@ export default function AdminApproval() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setMenuVisible(true)}>
           <Ionicons name="menu" size={28} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Approvals</Text>
       </View>
+
+      <AdminHamburger
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+      />
 
       {loading ? (
         <ActivityIndicator size="large" color="#2F459B" style={{ flex: 1 }} />
@@ -502,31 +509,31 @@ export default function AdminApproval() {
         </View>
       </Modal>
 
-      <View style={styles.tabBar}>
+      <View style={styles.bottomNav}>
         <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/dashboard" as any)}
+          style={styles.navItem}
+          onPress={() => router.push("/admin/dashboard")}
         >
           <Ionicons name="home-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="person" size={24} color="#FFD75E" />
-          <Text style={[styles.tabLabel, { color: "#FFD75E" }]}>Approvals</Text>
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/calendar" as any)}
-        >
-          <Ionicons name="calendar-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => router.push("/admin/courses" as any)}
+          style={styles.navItem}
+          onPress={() => router.push("/admin/courses")}
         >
           <Ionicons name="school-outline" size={24} color="#2F459B" />
-          <Text style={styles.tabLabel}>Courses</Text>
+          <Text style={styles.navText}>Courses</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/admin/calendar")}
+        >
+          <Ionicons name="calendar" size={24} color="#2F459B" />
+          <Text style={styles.navText}>Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="person-outline" size={24} color="#FFD75E" />
+          <Text style={[styles.navText, { color: "#FFD75E" }]}>Approvals</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -613,18 +620,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   codeBtnText: { fontSize: 12, color: "#2F459B", fontWeight: "600" },
-  tabBar: {
+  bottomNav: {
     position: "absolute",
     bottom: 0,
-    flexDirection: "row",
+    width: "100%",
+    height: 70,
     backgroundColor: "white",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#EEE",
-    paddingVertical: 10,
-    width: "100%",
   },
-  tabItem: { flex: 1, alignItems: "center" },
-  tabLabel: { fontSize: 10, marginTop: 4, color: "#2F459B" },
+  navItem: { alignItems: "center" },
+  navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
