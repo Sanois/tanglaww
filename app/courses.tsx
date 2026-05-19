@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -34,6 +35,15 @@ interface Course {
   isActive: boolean;
   modules: Module[];
 }
+
+const courseImages: Record<number, any> = {
+  1: require("../assets/images/let-on-boarding.jpg"),
+  2: require("../assets/images/let-express.jpg"),
+  3: require("../assets/images/let-advanced.jpg"),
+  4: require("../assets/images/integrative.jpg"),
+  5: require("../assets/images/final-coaching.jpg"),
+  6: require("../assets/images/test-highlights.jpg"),
+};
 
 export default function CoursesScreen() {
   const router = useRouter();
@@ -168,6 +178,16 @@ export default function CoursesScreen() {
                   activeOpacity={0.9}
                 >
                   <View style={styles.imageSection}>
+                    {courseImages[course.course_id] ? (
+                      <Image
+                        source={courseImages[course.course_id]}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{ flex: 1, backgroundColor: "#F2F4F7" }} />
+                    )}
+
                     <View style={styles.progressBadge}>
                       <View
                         style={[
@@ -180,11 +200,12 @@ export default function CoursesScreen() {
                       />
                       <Text style={styles.progressText}>{progress}%</Text>
                     </View>
-                    <Ionicons
-                      name={isLocked ? "lock-closed" : "image-outline"}
-                      size={40}
-                      color={isLocked ? "#333" : "#BDC3C7"}
-                    />
+
+                    {isLocked && (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={36} color="white" />
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.infoSection}>
@@ -336,8 +357,7 @@ const styles = StyleSheet.create({
   imageSection: {
     height: 120,
     backgroundColor: "#F2F4F7",
-    justifyContent: "center",
-    alignItems: "center",
+    overflow: "hidden",
   },
   progressBadge: {
     position: "absolute",
@@ -402,4 +422,11 @@ const styles = StyleSheet.create({
   },
   navItem: { alignItems: "center" },
   navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
 });
