@@ -33,7 +33,7 @@ export default function AdminDashboard() {
       .from("announcements")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(3);
     if (data) setAnnouncements(data);
   }, []);
 

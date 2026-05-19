@@ -34,6 +34,7 @@ export default function Homepage() {
     lastName: "",
   });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [affirmations, setAffirmations] = useState<any[]>([]);
   const [refresh, setRefresh] = useState(false);
 
   const fetchAnnouncements = useCallback(async () => {
@@ -41,13 +42,23 @@ export default function Homepage() {
       .from("announcements")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(3);
     if (data) setAnnouncements(data);
+  }, []);
+
+  const fetchAffirmations = useCallback(async () => {
+    const { data } = await supabase
+      .from("affirmation")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (data) setAffirmations(data);
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefresh(true);
     await fetchAnnouncements();
+    await fetchAffirmations();
     setRefresh(false);
   }, []);
 
@@ -70,6 +81,7 @@ export default function Homepage() {
 
     fetchStudent();
     fetchAnnouncements();
+    fetchAffirmations();
   }, [fetchAnnouncements]);
 
   useEffect(() => {
@@ -218,9 +230,26 @@ export default function Homepage() {
             <Ionicons name="heart-outline" size={22} color="#2F459B" />
             <Text style={styles.cardTitle}>Daily Affirmation</Text>
           </View>
-          <Text style={[styles.cardBody, { fontStyle: "italic" }]}>
-            "You're one step closer to your dream, Future LPTs!"
-          </Text>
+          {affirmations.length === 0 ? (
+            <Text style={styles.cardBody}>No affirmation yet.</Text>
+          ) : (
+            affirmations.map((a, i) => (
+              <View key={a.id ?? i}>
+                <Text
+                  style={[
+                    styles.cardBody,
+                    {
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    },
+                  ]}
+                >
+                  {a.content}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
