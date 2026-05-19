@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { validatingRole } from "./_layout";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function SignInScreen() {
     }
     setErrors([]);
     setLoading(true);
+    validatingRole.current = true;
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -60,7 +62,7 @@ export default function SignInScreen() {
 
       if (admin) {
         await supabase.auth.signOut();
-        setErrors(["Admins must use the Admin Sign In page."]);
+        setErrors(["Access denied. This account is not a student."]);
         return;
       }
 
@@ -86,6 +88,7 @@ export default function SignInScreen() {
         action: "student_login",
       });
 
+      validatingRole.current = false;
       Toast.show({
         type: "success",
         text1: "You have successfuly signed in!",
@@ -96,6 +99,7 @@ export default function SignInScreen() {
     } catch (err: any) {
       setErrors([err.message ?? "Something went wrong."]);
     } finally {
+      validatingRole.current = false;
       setLoading(false);
     }
   };

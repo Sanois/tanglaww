@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { validatingRole } from "../_layout";
 
 export default function AdminSignIn() {
   const router = useRouter();
@@ -32,36 +33,45 @@ export default function AdminSignIn() {
     }
     setErrors([]);
     setLoading(true);
+    validatingRole.current = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+      if (error) {
+        setErrors(["Invalid email or password."]);
+        setLoading(false);
+        return;
+      }
+      const { data: adminRow } = await supabase
+        .from("admin")
+        .select("admin_id")
+        .eq("admin_id", data.user.id)
+        .single();
 
-    if (error) {
-      setErrors(["Invalid email or password."]);
+      if (!adminRow) {
+        await supabase.auth.signOut();
+        setErrors(["Access denied. This account is not an administrator."]);
+        setLoading(false);
+        return;
+      }
+
+      validatingRole.current = false;
+      Toast.show({
+        type: "success",
+        text1: "You have successfuly signed in",
+        position: "bottom",
+        visibilityTime: 3500,
+      });
+      router.replace("/admin/dashboard");
+    } catch (err: any) {
+      setErrors([err.message ?? "Something went wrong."]);
+    } finally {
+      validatingRole.current = false;
       setLoading(false);
-      return;
     }
-    const { data: adminRow } = await supabase
-      .from("admin")
-      .select("admin_id")
-      .eq("admin_id", data.user.id)
-      .single();
-
-    if (!adminRow) {
-      await supabase.auth.signOut();
-      setErrors(["Access denied. This account is not an administrator."]);
-      setLoading(false);
-      return;
-    }
-    Toast.show({
-      type: "success",
-      text1: "You have successfuly signed in",
-      position: "bottom",
-      visibilityTime: 3500,
-    });
-    setLoading(false);
   };
   return (
     <SafeAreaView style={styles.container}>

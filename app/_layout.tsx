@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, AppState, View } from "react-native";
 import Toast from "react-native-toast-message";
 
+export const validatingRole = { current: false };
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -19,6 +21,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<"student" | "admin" | null>(null);
 
   const fetchRole = async (userId: string) => {
+    if (validatingRole.current) return;
     setLoading(true);
 
     const { data: admin } = await supabase
@@ -102,6 +105,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (validatingRole.current) return;
       setSession(session);
       if (session?.user?.id) fetchRole(session.user.id);
       else {
