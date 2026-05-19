@@ -88,14 +88,17 @@ export default function SignInScreen() {
         action: "student_login",
       });
 
-      validatingRole.current = false;
       Toast.show({
         type: "success",
         text1: "You have successfuly signed in!",
         position: "bottom",
         visibilityTime: 3500,
       });
-      router.replace("/homepage");
+      validatingRole.current = false;
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user?.id) {
+        await supabase.auth.refreshSession();
+      }
     } catch (err: any) {
       setErrors([err.message ?? "Something went wrong."]);
     } finally {
