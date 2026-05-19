@@ -104,18 +104,28 @@ export default function CoursesScreen() {
   };
 
   const navigateTo = (
-    screen: "handout" | "recorded-sessions",
+    screen: "handout" | "recorded-sessions" | "quiz" | "session-links",
     course: Course,
   ) => {
-    const primaryModule = course.modules[0] ?? null;
-    if (!primaryModule) return;
-    router.push({
-      pathname: `/materials/${screen}` as any,
-      params: {
-        moduleId: String(primaryModule.module_id),
-        courseTitle: course.courseName,
-      },
-    });
+    if (screen === "handout" || screen === "recorded-sessions") {
+      const primaryModule = course.modules[0] ?? null;
+      if (!primaryModule) return;
+      router.push({
+        pathname: `/materials/${screen}` as any,
+        params: {
+          moduleId: String(primaryModule.module_id),
+          courseTitle: course.courseName,
+        },
+      });
+    } else {
+      router.push({
+        pathname: `/materials/${screen}` as any,
+        params: {
+          courseId: String(course.course_id),
+          courseTitle: course.courseName,
+        },
+      });
+    }
   };
 
   const getProgress = (courseId: number) => 0;
@@ -235,7 +245,7 @@ export default function CoursesScreen() {
                 {isExpanded && !isLocked && (
                   <View style={styles.dropdownContent}>
                     <TouchableOpacity
-                      style={styles.dropdownItem}
+                      style={styles.dropItem}
                       onPress={() => navigateTo("handout", course)}
                     >
                       <Ionicons
@@ -243,38 +253,44 @@ export default function CoursesScreen() {
                         size={20}
                         color="#2F459B"
                       />
-                      <Text style={styles.dropdownText}>Handouts</Text>
+                      <Text style={styles.dropText}>Handouts</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.dropdownItem}
+                      style={styles.dropItem}
                       onPress={() => navigateTo("recorded-sessions", course)}
                     >
                       <Ionicons
-                        name="play-circle-outline"
+                        name="videocam-outline"
                         size={20}
                         color="#2F459B"
                       />
-                      <Text style={styles.dropdownText}>Recorded Sessions</Text>
+                      <Text style={styles.dropText}>Recorded Sessions</Text>
                     </TouchableOpacity>
 
                     {!isOnboarding && (
                       <>
-                        <TouchableOpacity style={styles.dropdownItem}>
+                        <TouchableOpacity
+                          style={styles.dropItem}
+                          onPress={() => navigateTo("quiz", course)}
+                        >
                           <Ionicons
                             name="bulb-outline"
                             size={20}
                             color="#2F459B"
                           />
-                          <Text style={styles.dropdownText}>Quiz</Text>
+                          <Text style={styles.dropText}>Quiz</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.dropdownItem}>
+                        <TouchableOpacity
+                          style={styles.dropItem}
+                          onPress={() => navigateTo("session-links", course)}
+                        >
                           <Ionicons
                             name="share-outline"
                             size={20}
                             color="#2F459B"
                           />
-                          <Text style={styles.dropdownText}>
+                          <Text style={styles.dropText}>
                             Online Session Link
                           </Text>
                         </TouchableOpacity>
@@ -388,7 +404,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#E74C3C",
     marginTop: 4,
-    fontStyle: "italic",
   },
   dropdownContent: {
     backgroundColor: "#F0F2F8",
@@ -396,16 +411,18 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
     padding: 10,
   },
-  dropdownItem: {
+  dropItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
-  dropdownText: {
-    marginLeft: 10,
+  dropText: {
+    fontSize: 14,
     color: "#2F459B",
     fontWeight: "500",
+    marginLeft: 15,
     textDecorationLine: "underline",
   },
   bottomNav: {
