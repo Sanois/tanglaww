@@ -18,7 +18,7 @@ import {
 import { supabase } from "../lib/supabase";
 
 const { width } = Dimensions.get("window");
-const headerBg = require("../assets/images/llpt.jpg");
+const headerBg = require("../assets/images/tanglaw_header.png");
 
 type StatusType = "pending" | "approved" | "rejected" | null;
 type ActiveTab = "code" | "status";
@@ -217,13 +217,12 @@ export default function EnrollmentCodeScreen() {
         <View style={[styles.statusCard, styles.pendingCard]}>
           <Ionicons name="time-outline" size={44} color="#FFB800" />
           <View style={styles.statusTitleRow}>
-            <View style={[styles.statusDot, { backgroundColor: "#FFB800" }]} />
             <Text style={styles.statusTitle}>Under Review</Text>
           </View>
           <Text style={styles.statusName}>Hello, {studentData.firstName}!</Text>
           <Text style={styles.statusMessage}>
             Your enrollment is currently being reviewed by our admin team.
-            Please check back later.
+            Please check again later.
           </Text>
         </View>
       );
@@ -234,7 +233,6 @@ export default function EnrollmentCodeScreen() {
         <View style={[styles.statusCard, styles.approvedCard]}>
           <Ionicons name="checkmark-circle" size={44} color="#27ae60" />
           <View style={styles.statusTitleRow}>
-            <View style={[styles.statusDot, { backgroundColor: "#27ae60" }]} />
             <Text style={styles.statusTitle}>Approved!</Text>
           </View>
           <Text style={styles.statusName}>
@@ -264,7 +262,6 @@ export default function EnrollmentCodeScreen() {
         <View style={[styles.statusCard, styles.rejectedCard]}>
           <Ionicons name="close-circle" size={44} color="#e74c3c" />
           <View style={styles.statusTitleRow}>
-            <View style={[styles.statusDot, { backgroundColor: "#e74c3c" }]} />
             <Text style={styles.statusTitle}>Not Approved</Text>
           </View>
           <Text style={styles.statusName}>Hello, {studentData.firstName}.</Text>
@@ -283,7 +280,6 @@ export default function EnrollmentCodeScreen() {
               style={styles.reenrollBtn}
               onPress={() => router.push("/enroll" as any)}
             >
-              <Ionicons name="refresh-outline" size={18} color="white" />
               <Text style={styles.reenrollBtnText}>Re-Enroll Now</Text>
             </TouchableOpacity>
           ) : (
@@ -721,7 +717,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     gap: 8,
   },
-  statusDot: { width: 12, height: 12, borderRadius: 6 },
   statusTitle: { fontSize: 20, fontWeight: "bold", color: "#333" },
   statusName: { fontSize: 15, fontWeight: "600", color: "#555", marginTop: 6 },
   statusMessage: {
