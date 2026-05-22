@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Image,
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [affirmations, setAffirmations] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
   const [adminName, setAdminName] = useState({
     firstName: "",
     lastName: "",
@@ -83,6 +85,43 @@ export default function AdminDashboard() {
     setPendingEnrollments(pending);
   };
 
+  const fetchNotifCount = useCallback(async () => {
+    const lastSeen = await AsyncStorage.getItem("notifLastSeen");
+
+    const { data: enrollments } = await supabase.from("enrollment").select(`
+    enrollment_id,
+    verification!enrollment_verification_id_fkey (verificationStatus, verificationNotes, created_at)
+  `);
+
+    const pendingCount = (enrollments ?? []).filter((e: any) => {
+      const v = Array.isArray(e.verification)
+        ? e.verification[0]
+        : e.verification;
+      const isUnseen = lastSeen
+        ? new Date(v?.created_at) > new Date(lastSeen)
+        : true;
+      return (
+        v?.verificationStatus === false && !v?.verificationNotes && isUnseen
+      );
+    }).length;
+
+    const now = new Date();
+    const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const eventsQuery = supabase
+      .from("calendar_events")
+      .select("*", { count: "exact", head: true })
+      .gte("event_date", now.toISOString())
+      .lte("event_date", twoDaysLater.toISOString());
+
+    if (lastSeen) {
+      eventsQuery.gt("created_at", lastSeen);
+    }
+
+    const { count: eventCount } = await eventsQuery;
+
+    setNotifCount(pendingCount + (eventCount ?? 0));
+  }, []);
+
   useEffect(() => {
     fetchAdmin();
     fetchAnnouncements();
@@ -90,14 +129,21 @@ export default function AdminDashboard() {
     fetchPending();
   }, [fetchAnnouncements]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifCount();
+    }, [fetchNotifCount]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefresh(true);
     await fetchAffirmations();
     await fetchAnnouncements();
     await fetchAdmin();
     await fetchPending();
+    await fetchNotifCount();
     setRefresh(false);
-  }, []);
+  }, [fetchAffirmations, fetchAnnouncements, fetchNotifCount]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -107,8 +153,24 @@ export default function AdminDashboard() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dashboard</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/admin/notification")}>
+          <TouchableOpacity
+            onPress={async () => {
+              await AsyncStorage.setItem(
+                "notifLastSeen",
+                new Date().toISOString(),
+              );
+              setNotifCount(0);
+              router.push("/admin/notification");
+            }}
+          >
             <Ionicons name="notifications-outline" size={24} color="black" />
+            {notifCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {notifCount > 99 ? "99+" : notifCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -435,4 +497,19 @@ const styles = StyleSheet.create({
   },
   navItem: { alignItems: "center" },
   navText: { fontSize: 12, marginTop: 4, color: "#2F459B" },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#e74c3c",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "#FFD75E",
+  },
+  badgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
 });

@@ -60,6 +60,7 @@ const isYesterday = (iso: string) => {
 export default function StudentNotifications() {
   const router = useRouter();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
@@ -67,22 +68,40 @@ export default function StudentNotifications() {
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      const { data, error } = await supabase
-        .from("calendar_events")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) setEvents(data as CalendarEvent[]);
+    const fetchAll = async () => {
+      await Promise.all([
+        supabase
+          .from("calendar_events")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data) setEvents(data);
+          }),
+        supabase
+          .from("announcements")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data) setAnnouncements(data);
+          }),
+      ]);
       setLoading(false);
     };
-    fetchEvents();
+    fetchAll();
   }, []);
 
   const todayEvents = events.filter((e) => isToday(e.created_at));
   const yesterdayEvents = events.filter((e) => isYesterday(e.created_at));
   const olderEvents = events.filter(
     (e) => !isToday(e.created_at) && !isYesterday(e.created_at),
+  );
+
+  const todayAnnouncements = announcements.filter((a) => isToday(a.created_at));
+  const yesterdayAnnouncements = announcements.filter((a) =>
+    isYesterday(a.created_at),
+  );
+  const olderAnnouncements = announcements.filter(
+    (a) => !isToday(a.created_at) && !isYesterday(a.created_at),
   );
 
   const openModal = (event: CalendarEvent) => {
@@ -95,12 +114,8 @@ export default function StudentNotifications() {
       style={styles.notificationCard}
       onPress={() => openModal(event)}
     >
-      <View style={styles.iconContainer}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="calendar-outline" size={20} color="#2F459B" />
-        </View>
-      </View>
       <View style={styles.textContainer}>
+        <Text style={styles.label}>Calendar Event</Text>
         <Text style={styles.notiTitle}>{event.title}</Text>
         {event.description && (
           <Text style={styles.notiDescription} numberOfLines={1}>
@@ -113,6 +128,23 @@ export default function StudentNotifications() {
         <Text style={styles.notiTime}>{formatTime(event.event_date)}</Text>
       </View>
     </TouchableOpacity>
+  );
+
+  const AnnouncementItem = ({ item }: { item: any }) => (
+    <View style={styles.notificationCard}>
+      <View style={styles.textContainer}>
+        <Text style={styles.label}>Announcement</Text>
+        <Text style={styles.notiTitle}>{item.title}</Text>
+        {item.content && (
+          <Text style={styles.notiDescription} numberOfLines={1}>
+            {item.content}
+          </Text>
+        )}
+      </View>
+      <View style={styles.dateTimeContainer}>
+        <Text style={styles.notiDate}>{formatDate(item.created_at)}</Text>
+      </View>
+    </View>
   );
 
   return (
@@ -128,40 +160,59 @@ export default function StudentNotifications() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#2F459B" />
         </View>
-      ) : events.length === 0 ? (
+      ) : events.length === 0 && announcements.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="notifications-off-outline" size={48} color="#DDD" />
           <Text style={styles.emptyText}>No notifications yet</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {todayEvents.length > 0 && (
+          {(todayEvents.length > 0 || todayAnnouncements.length > 0) && (
             <>
               <Text style={styles.sectionHeader}>Today</Text>
               {todayEvents.map((e) => (
-                <NotificationItem key={e.event_id} event={e} />
+                <NotificationItem key={`event-${e.event_id}`} event={e} />
+              ))}
+              {todayAnnouncements.map((a) => (
+                <AnnouncementItem
+                  key={`announcement-${a.announcement_id}`}
+                  item={a}
+                />
               ))}
             </>
           )}
 
-          {yesterdayEvents.length > 0 && (
+          {(yesterdayEvents.length > 0 ||
+            yesterdayAnnouncements.length > 0) && (
             <>
               <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
                 Yesterday
               </Text>
               {yesterdayEvents.map((e) => (
-                <NotificationItem key={e.event_id} event={e} />
+                <NotificationItem key={`event-${e.event_id}`} event={e} />
+              ))}
+              {yesterdayAnnouncements.map((a) => (
+                <AnnouncementItem
+                  key={`announcement-${a.announcement_id}`}
+                  item={a}
+                />
               ))}
             </>
           )}
 
-          {olderEvents.length > 0 && (
+          {(olderEvents.length > 0 || olderAnnouncements.length > 0) && (
             <>
               <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
                 Earlier
               </Text>
               {olderEvents.map((e) => (
-                <NotificationItem key={e.event_id} event={e} />
+                <NotificationItem key={`event-${e.event_id}`} event={e} />
+              ))}
+              {olderAnnouncements.map((a) => (
+                <AnnouncementItem
+                  key={`announcement-${a.announcement_id}`}
+                  item={a}
+                />
               ))}
             </>
           )}
@@ -178,16 +229,21 @@ export default function StudentNotifications() {
             style={styles.eventModal}
             onStartShouldSetResponder={() => true}
           >
-            <View style={styles.eventModalHeader}>
-              <View style={styles.eventModalIconWrap}>
-                <Ionicons name="calendar" size={22} color="#2F459B" />
-              </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 4,
+              }}
+            >
+              <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={{ marginLeft: "auto" }}
+              >
                 <Ionicons name="close" size={24} color="#555" />
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
 
             <View style={styles.eventModalRow}>
               <Ionicons name="time-outline" size={16} color="#2F459B" />
@@ -274,15 +330,6 @@ const styles = StyleSheet.create({
     borderColor: "#2F459B",
     marginBottom: 12,
   },
-  iconContainer: { marginRight: 12 },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#EEF1FF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   textContainer: { flex: 1 },
   notiTitle: { fontSize: 15, fontWeight: "bold", color: "#2F459B" },
   notiDescription: { fontSize: 13, color: "#777", marginTop: 2 },
@@ -361,4 +408,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eventModalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 14 },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2F459B",
+    marginBottom: 3,
+    fontStyle: "italic",
+  },
 });

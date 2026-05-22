@@ -39,7 +39,7 @@ const MONTHS = [
 export default function CalendarScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const [activeTab, setActiveTab] = useState("Events");
+  const [activeTab, setActiveTab] = useState("Upcoming");
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
@@ -316,33 +316,35 @@ export default function CalendarScreen() {
           </View>
         </View>
 
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => handleTabChange("Upcoming", 0)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Upcoming" && styles.activeTabText,
-              ]}
+        <View style={styles.tabWrapper}>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => handleTabChange("Upcoming", 0)}
             >
-              Upcoming Events
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => handleTabChange("To Do", 1)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "To Do" && styles.activeTabText,
-              ]}
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Upcoming" && styles.activeTabText,
+                ]}
+              >
+                Upcoming Events
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => handleTabChange("To Do", 1)}
             >
-              To Do List
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "To Do" && styles.activeTabText,
+                ]}
+              >
+                To Do List
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Animated.View
             style={[styles.underline, { left: tabSlideAnim, width: "50%" }]}
           />
@@ -351,7 +353,7 @@ export default function CalendarScreen() {
         <View style={styles.eventSection}>
           {loading ? (
             <ActivityIndicator color="#0D2A94" />
-          ) : activeTab === "Events" ? (
+          ) : activeTab === "Upcoming" ? (
             events.length === 0 ? (
               <Text style={styles.emptyText}>No upcoming events</Text>
             ) : (
@@ -478,17 +480,22 @@ export default function CalendarScreen() {
             style={styles.eventModal}
             onStartShouldSetResponder={() => true}
           >
-            <View style={styles.eventModalHeader}>
-              <View style={styles.eventModalIconWrap}>
-                <Ionicons name="calendar" size={22} color="#0D2A94" />
-              </View>
-              <TouchableOpacity onPress={() => setEventModalVisible(false)}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 4,
+              }}
+            >
+              <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
+
+              <TouchableOpacity
+                onPress={() => setEventModalVisible(false)}
+                style={{ marginLeft: "auto" }}
+              >
                 <Ionicons name="close" size={24} color="#555" />
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.eventModalTitle}>{selectedEvent?.title}</Text>
-
             <View style={styles.eventModalRow}>
               <Ionicons name="time-outline" size={16} color="#0D2A94" />
               <Text style={styles.eventModalMeta}>
@@ -597,13 +604,15 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   legendText: { fontSize: 11, color: "#666" },
-  tabContainer: {
-    flexDirection: "row",
+  tabWrapper: {
+    marginHorizontal: 20,
+    marginTop: 10,
     backgroundColor: "#0D2A94",
-    marginHorizontal: 15,
-    borderRadius: 10,
-    overflow: "hidden",
+    borderRadius: 12,
+    height: 50,
+    position: "relative",
   },
+  tabContainer: { flexDirection: "row", width: "100%", height: "100%" },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
   activeTab: { borderBottomWidth: 4, borderBottomColor: "white" },
   tabText: { color: "rgba(255,255,255,0.6)", fontWeight: "bold" },
