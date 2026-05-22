@@ -5,6 +5,8 @@ export default function MaterialsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="handout" />
       <Stack.Screen name="recorded-sessions" />
+      <Stack.Screen name="quiz" />
+      <Stack.Screen name="session-links" />
     </Stack>
   );
 }

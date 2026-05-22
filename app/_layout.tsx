@@ -160,7 +160,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inMaterialsGroup = pathname.startsWith("/materials");
 
     if (!session) {
-      if (!inAuthGroup && !inAdminGroup && !pathname.startsWith("/registrant"))
+      if (
+        !inAuthGroup &&
+        !inAdminGroup &&
+        !inMaterialsGroup &&
+        !pathname.startsWith("/registrant")
+      )
         router.replace("/login");
     } else if (role === "student") {
       if (inAdminGroup) router.replace("/homepage");

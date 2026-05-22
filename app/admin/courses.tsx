@@ -76,7 +76,9 @@ const CourseCard = React.memo(
       screen: "handout" | "recorded-sessions" | "quiz" | "session-links",
     ) => {
       if (screen === "handout" || screen === "recorded-sessions") {
-        if (!primaryModule) return;
+        if (!primaryModule) {
+          return;
+        }
         router.push({
           pathname: `/materials/${screen}` as any,
           params: {
