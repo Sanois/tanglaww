@@ -1,0 +1,73 @@
+import { Route, Routes } from "react-router-dom";
+import About from "./pages/About";
+import AboutUs from "./pages/AboutUs";
+import AdminAbout from "./pages/admin/AdminAbout";
+import AdminApprovals from "./pages/admin/AdminApprovals";
+import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AdminAuditQueue from "./pages/admin/AdminAuditQueue";
+import AdminCalendar from "./pages/admin/AdminCalendar";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminHandouts from "./pages/admin/AdminHandouts";
+import AdminHelp from "./pages/admin/AdminHelp";
+import AdminPolicies from "./pages/admin/AdminPolicies";
+import AdminRecordedSessions from "./pages/admin/AdminRecordedSessions";
+import AdminSignIn from "./pages/admin/AdminSignIn";
+import AdminStudentRegistry from "./pages/admin/AdminStudentRegistry";
+import Calendar from "./pages/Calendar";
+import ChangePassword from "./pages/ChangePassword";
+import CourseDetail from "./pages/CourseDetails";
+import Courses from "./pages/Courses";
+import Dashboard from "./pages/Dashboard";
+import DownloadApp from "./pages/DownloadApp";
+import Enroll from "./pages/Enroll";
+import Help from "./pages/Help";
+import HelpdeskPage from "./pages/HelpdeskPage";
+import Home from "./pages/Home";
+import Notifications from "./pages/Notifications";
+import OurCourses from "./pages/OurCourses";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import SignIn from "./pages/SignIn";
+import Terms from "./pages/Terms";
+
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/enroll" element={<Enroll />} />
+      <Route path="/signin" element={<SignIn />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/courses" element={<Courses />} />
+      <Route path="/dashboard/courses/:courseId" element={<CourseDetail isAdmin={false} />} />
+      <Route path="/dashboard/calendar" element={<Calendar />} />
+      <Route path="/dashboard/profile" element={<Profile />} />
+      <Route path="/dashboard/about" element={<About />} />
+      <Route path="/dashboard/help" element={<Help />} />
+      <Route path="/dashboard/terms" element={<Terms />} />
+      <Route path="/dashboard/settings" element={<Settings />} />
+      <Route path="/dashboard/settings/change-password" element={<ChangePassword />} />
+   
+      <Route path="/dashboard/notifications" element={<Notifications />} />
+      <Route path="/admin/signin" element={<AdminSignIn />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/approvals" element={<AdminApprovals />} />
+      <Route path="/admin/audit-queue" element={<AdminAuditQueue />} />
+      <Route path="/admin/students" element={<AdminStudentRegistry />} />
+<Route path="/admin/about" element={<AdminAbout />} />
+      <Route path="/admin/calendar" element={<AdminCalendar />} />
+      <Route path="/admin/courses" element={<AdminCourses />} />
+<Route path="/admin/help" element={<AdminHelp />} />
+<Route path="/admin/policies" element={<AdminPolicies />} />
+<Route path="/admin/audit-log" element={<AdminAuditLog />} />
+      <Route path="/admin/courses/:courseId/handouts" element={<AdminHandouts />} />
+      <Route path="/our-courses" element={<OurCourses />} />
+<Route path="/about-us" element={<AboutUs />} />
+<Route path="/helpdesk" element={<HelpdeskPage />} />
+<Route path="/download" element={<DownloadApp />} />
+      <Route path="/admin/courses/:courseId/recorded-sessions" element={<AdminRecordedSessions />} />
+      
+    </Routes>
+  );
+}

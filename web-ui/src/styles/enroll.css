@@ -1,0 +1,178 @@
+/* ── Enroll Card ─────────────────────────────────────────── */
+.enroll-page {
+  font-family: "Poppins", sans-serif;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+  padding-bottom: 60px;
+}
+
+.enroll-card {
+  max-width: 660px;
+  margin: 40px auto;
+  background-color: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.12);
+  border: 1.5px solid #e0e4ef;
+}
+
+/* ── Form Body ───────────────────────────────────────────── */
+.enroll-body {
+  padding: 32px 40px;
+}
+
+.enroll-subtitle {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+/* ── Fields ──────────────────────────────────────────────── */
+.field-group {
+  margin-top: 16px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field-label.error {
+  color: #e53935;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.field-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  font-family: "Poppins", sans-serif;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field-input:focus {
+  border-color: #1a1a6e;
+}
+
+.field-input.error {
+  border-color: #e53935;
+}
+
+.field-error {
+  font-size: 11px;
+  color: #e53935;
+  margin-top: 4px;
+}
+
+/* ── Radio ───────────────────────────────────────────────── */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ── Continue Button ─────────────────────────────────────── */
+.continue-btn {
+  width: 100%;
+  padding: 14px;
+  background-color: #1a1a6e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  margin-top: 32px;
+  transition: background-color 0.2s;
+}
+
+.continue-btn:hover {
+  background-color: #12125a;
+}
+
+/* ── Summary Accordion ───────────────────────────────────── */
+.summary-section {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.summary-header {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  user-select: none;
+}
+
+.summary-body {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: #555;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Step 5 Complete ─────────────────────────────────────── */
+.complete-check {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 40px;
+  color: #fff;
+}
+
+.complete-next {
+  text-align: left;
+  background-color: #fffbea;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 32px;
+}
+
+.complete-next-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.complete-next-item {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 8px;
+}

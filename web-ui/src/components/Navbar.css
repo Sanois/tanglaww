@@ -1,0 +1,47 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 16px 40px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.nav-logo {
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  object-fit: contain;
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  font-family: Poppins, sans-serif;
+  font-size: 15px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+}
+
+.nav-link.active {
+  color: #1a1a6e;
+  font-weight: 700;
+}
+
+.btn-signin {
+  background-color: #1a1a6e;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-family: Poppins, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+}
