@@ -250,7 +250,6 @@ export default function EnrollmentCodeScreen() {
               setActiveTab("code");
             }}
           >
-            <Ionicons name="keypad-outline" size={16} color="white" />
             <Text style={styles.switchTabBtnText}>Go to Enter Code</Text>
           </TouchableOpacity>
         </View>

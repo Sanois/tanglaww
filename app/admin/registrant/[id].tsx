@@ -578,7 +578,6 @@ export default function RegistrantDetails() {
               setCodeModal(true);
             }}
           >
-            <Ionicons name="key-outline" size={18} color="#2F459B" />
             <Text style={styles.viewCodeBtnText}>View Activation Code</Text>
           </TouchableOpacity>
         )}

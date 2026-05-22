@@ -97,8 +97,7 @@ export default function AdminAffirmation() {
             <Ionicons name="heart" size={40} color="#FFD75E" />
             <Text style={styles.infoTitle}>Set Today's Affirmation</Text>
             <Text style={styles.infoSubtitle}>
-              This message will be displayed to all students on their dashboard
-              to motivate and inspire them.
+              This message will be displayed to all students on their dashboard.
             </Text>
           </View>
 
@@ -142,12 +141,6 @@ export default function AdminAffirmation() {
                 <Text style={styles.saveText}>
                   {existing ? "Update Affirmation" : "Set Affirmation"}
                 </Text>
-                <Ionicons
-                  name="heart"
-                  size={18}
-                  color="white"
-                  style={{ marginLeft: 10 }}
-                />
               </>
             )}
           </TouchableOpacity>

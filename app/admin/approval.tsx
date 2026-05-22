@@ -142,7 +142,7 @@ export default function AdminApproval() {
               } else {
                 code = generateCode();
                 const expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + 7);
+                expiresAt.setDate(expiresAt.getDate() + 3);
 
                 const { error: codeError } = await supabase
                   .from("activation_codes")
@@ -365,7 +365,6 @@ export default function AdminApproval() {
           style={styles.codeBtn}
           onPress={() => handleViewCode(enrollment)}
         >
-          <Ionicons name="key-outline" size={16} color="#2F459B" />
           <Text style={styles.codeBtnText}>Code</Text>
         </TouchableOpacity>
       )}
@@ -454,23 +453,6 @@ export default function AdminApproval() {
             <Text style={styles.modalStudentName}>{codeStudent?.name}</Text>
             <Text style={styles.modalEmail}>{codeStudent?.email}</Text>
 
-            {emailSent === true && (
-              <View style={styles.emailSuccessBanner}>
-                <Ionicons name="mail" size={16} color="#27ae60" />
-                <Text style={styles.emailSuccessText}>
-                  Email sent successfully to student
-                </Text>
-              </View>
-            )}
-            {emailSent === false && (
-              <View style={styles.emailFailBanner}>
-                <Ionicons name="mail-unread" size={16} color="#E74C3C" />
-                <Text style={styles.emailFailText}>
-                  Email failed — share code manually
-                </Text>
-              </View>
-            )}
-
             <View style={styles.codeDisplay}>
               {generatedCode.split("").map((digit, i) => (
                 <View key={i} style={styles.codeDigitBox}>
@@ -480,7 +462,7 @@ export default function AdminApproval() {
             </View>
 
             <Text style={styles.codeExpiry}>
-              Expires in 7 days · One-time use only
+              Expires in 3 days. One-time use only
             </Text>
 
             <TouchableOpacity
@@ -490,11 +472,6 @@ export default function AdminApproval() {
               <Ionicons name="send-outline" size={16} color="#2F459B" />
               <Text style={styles.resendBtnText}>Resend Email</Text>
             </TouchableOpacity>
-
-            <Text style={styles.codeInstruction}>
-              If the student doesn't receive the email, share the code above
-              directly via SMS or messaging app.
-            </Text>
 
             <TouchableOpacity
               style={styles.modalCloseBtn}

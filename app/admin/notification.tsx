@@ -1,129 +1,273 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
+interface Notification {
+  id: string;
+  type: "enrollment" | "event";
+  label: string;
+  title: string;
+  description: string;
+  date: string; // formatted date string for display
+  time: string; // formatted time string for display
+  route?: string;
+  createdAt: string; // ISO — used for Today/Yesterday/Earlier grouping
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const formatDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+const formatTime = (iso: string): string =>
+  new Date(iso).toLocaleTimeString("en-PH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const isToday = (iso: string) => {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
+};
+
+const isYesterday = (iso: string) => {
+  const d = new Date(iso);
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  return (
+    d.getDate() === y.getDate() &&
+    d.getMonth() === y.getMonth() &&
+    d.getFullYear() === y.getFullYear()
+  );
+};
+
+// ── Screen ─────────────────────────────────────────────────────────────────
+
 export default function AdminNotification() {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handlePublish = async () => {
-    if (!title.trim() || !message.trim()) {
-      Alert.alert("Error", "Please fill in both the title and the message.");
-      return;
-    }
+  const fetchNotifications = useCallback(async () => {
+    const results: Notification[] = [];
 
-    setLoading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in.");
+    // Pending enrollments
+    const { data: enrollments } = await supabase
+      .from("enrollment")
+      .select(
+        `
+        enrollment_id,
+        enrollmentDate,
+        student (firstName, lastName),
+        verification!enrollment_verification_id_fkey (verificationStatus, verificationNotes)
+      `,
+      )
+      .order("enrollmentDate", { ascending: false });
 
-      const { error } = await supabase.from("announcements").insert({
-        admin_id: user.id,
-        title: title.trim(),
-        content: message.trim(),
+    (enrollments ?? []).forEach((e: any) => {
+      const v = Array.isArray(e.verification)
+        ? e.verification[0]
+        : e.verification;
+      const isPending =
+        v?.verificationStatus === false && !v?.verificationNotes;
+      if (isPending) {
+        results.push({
+          id: `enrollment-${e.enrollment_id}`,
+          type: "enrollment",
+          label: "New Enrollment",
+          title: `${e.student?.firstName} ${e.student?.lastName}`,
+          description: "Awaiting your review and approval",
+          date: formatDate(e.enrollmentDate),
+          time: formatTime(e.enrollmentDate),
+          route: "/admin/approval",
+          createdAt: e.enrollmentDate,
+        });
+      }
+    });
+
+    // All calendar events
+    const { data: events } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .order("event_date", { ascending: false });
+
+    (events ?? []).forEach((event: any) => {
+      results.push({
+        id: `event-${event.event_id}`,
+        type: "event",
+        label: "Calendar Event",
+        title: event.title,
+        description: event.description ?? "",
+        date: formatDate(event.event_date),
+        time: formatTime(event.event_date),
+        route: "/admin/calendar",
+        createdAt: event.event_date,
       });
+    });
 
-      if (error) throw new Error(error.message);
+    // Enrollments first, then events
+    results.sort((a, b) => {
+      if (a.type === "enrollment" && b.type !== "enrollment") return -1;
+      if (b.type === "enrollment" && a.type !== "enrollment") return 1;
+      return 0;
+    });
 
-      Alert.alert(
-        "Published!",
-        "Announcement is now visible to all students.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
-    } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setNotifications(results);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+    setRefreshing(false);
+  }, [fetchNotifications]);
+
+  const todayItems = notifications.filter((n) => isToday(n.createdAt));
+  const yesterdayItems = notifications.filter((n) => isYesterday(n.createdAt));
+  const olderItems = notifications.filter(
+    (n) => !isToday(n.createdAt) && !isYesterday(n.createdAt),
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Announcement</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={{ width: 24 }} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.infoSection}>
-            <Ionicons name="megaphone" size={40} color="#FFD75E" />
-            <Text style={styles.infoTitle}>Broadcast Message</Text>
-            <Text style={styles.infoSubtitle}>
-              The information you post here will be visible to all students on
-              their dashboards.
-            </Text>
-          </View>
-
-          <View style={styles.form}>
-            <Text style={styles.label}>Announcement Title:*</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Enrollment Update"
-              value={title}
-              onChangeText={setTitle}
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#2F459B" />
+        </View>
+      ) : notifications.length === 0 ? (
+        <View style={styles.centered}>
+          <Ionicons name="notifications-off-outline" size={64} color="#DDD" />
+          <Text style={styles.emptyTitle}>All caught up!</Text>
+          <Text style={styles.emptySubtitle}>
+            No pending enrollments or upcoming events.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#2F459B"]}
             />
-
-            <Text style={styles.label}>Message Body:*</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Type your announcement here..."
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.publishBtn, loading && { opacity: 0.7 }]}
-            onPress={handlePublish}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Text style={styles.publishText}>Publish Announcement</Text>
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color="white"
-                  style={{ marginLeft: 10 }}
+          }
+        >
+          {todayItems.length > 0 && (
+            <>
+              <Text style={styles.sectionHeader}>Today</Text>
+              {todayItems.map((n) => (
+                <NotificationCard
+                  key={n.id}
+                  notif={n}
+                  onPress={() => n.route && router.push(n.route as any)}
                 />
-              </>
-            )}
-          </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {yesterdayItems.length > 0 && (
+            <>
+              <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
+                Yesterday
+              </Text>
+              {yesterdayItems.map((n) => (
+                <NotificationCard
+                  key={n.id}
+                  notif={n}
+                  onPress={() => n.route && router.push(n.route as any)}
+                />
+              ))}
+            </>
+          )}
+
+          {olderItems.length > 0 && (
+            <>
+              <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
+                Earlier
+              </Text>
+              {olderItems.map((n) => (
+                <NotificationCard
+                  key={n.id}
+                  notif={n}
+                  onPress={() => n.route && router.push(n.route as any)}
+                />
+              ))}
+            </>
+          )}
         </ScrollView>
-      </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
+
+// ── Card ───────────────────────────────────────────────────────────────────
+
+function NotificationCard({
+  notif,
+  onPress,
+}: {
+  notif: Notification;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.notificationCard}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.textContainer}>
+        <Text style={styles.label}>{notif.label}</Text>
+        <Text style={styles.notiTitle}>{notif.title}</Text>
+        {notif.description ? (
+          <Text style={styles.notiDescription} numberOfLines={1}>
+            {notif.description}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.dateTimeContainer}>
+        <Text style={styles.notiDate}>{notif.date}</Text>
+        <Text style={styles.notiTime}>{notif.time}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
@@ -131,61 +275,48 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFD75E",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    justifyContent: "space-between",
   },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "bold", color: "black" },
-  content: { padding: 25 },
-  infoSection: {
+  headerTitle: { fontSize: 20, fontWeight: "bold", color: "black" },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 30,
-    backgroundColor: "#F8F9FA",
-    padding: 20,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#EEE",
+    gap: 12,
+    padding: 40,
   },
-  infoTitle: {
-    fontSize: 20,
+  emptyTitle: { fontSize: 18, fontWeight: "bold", color: "#555" },
+  emptySubtitle: { fontSize: 13, color: "#999", textAlign: "center" },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
+  sectionHeader: {
+    fontSize: 22,
     fontWeight: "bold",
     color: "#2F459B",
-    marginTop: 10,
+    marginBottom: 15,
   },
-  infoSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 5,
-    lineHeight: 18,
-  },
-  form: { marginBottom: 30 },
-  label: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2F459B",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#DCDFE3",
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 20,
-    color: "#333",
-  },
-  textArea: { height: 150, paddingTop: 15 },
-  publishBtn: {
-    backgroundColor: "#2F459B",
-    padding: 18,
-    borderRadius: 12,
+  notificationCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    elevation: 3,
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2F459B",
+    marginBottom: 12,
   },
-  publishText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  textContainer: { flex: 1 },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2F459B",
+    fontStyle: "italic",
+    marginBottom: 3,
+  },
+  notiTitle: { fontSize: 15, fontWeight: "bold", color: "#2F459B" },
+  notiDescription: { fontSize: 13, color: "#777", marginTop: 2 },
+  dateTimeContainer: { alignItems: "flex-end" },
+  notiDate: { fontSize: 10, color: "#777" },
+  notiTime: { fontSize: 10, color: "#777", fontWeight: "bold" },
 });

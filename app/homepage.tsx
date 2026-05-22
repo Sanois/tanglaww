@@ -5,7 +5,8 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
@@ -35,6 +36,7 @@ export default function Homepage() {
   });
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [affirmations, setAffirmations] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
   const [refresh, setRefresh] = useState(false);
 
   const fetchAnnouncements = useCallback(async () => {
@@ -55,12 +57,60 @@ export default function Homepage() {
     if (data) setAffirmations(data);
   }, []);
 
+  const fetchNotifCount = useCallback(async () => {
+    const lastSeen = await AsyncStorage.getItem("notifLastSeen");
+
+    const { data: enrollments } = await supabase.from("enrollment").select(`
+      enrollment_id,
+      verification!enrollment_verification_id_fkey (verificationStatus, verificationNotes, created_at)
+    `);
+
+    const pendingCount = (enrollments ?? []).filter((e: any) => {
+      const v = Array.isArray(e.verification)
+        ? e.verification[0]
+        : e.verification;
+      const isUnseen = lastSeen
+        ? new Date(v?.created_at) > new Date(lastSeen)
+        : true;
+      return (
+        v?.verificationStatus === false && !v?.verificationNotes && isUnseen
+      );
+    }).length;
+
+    const announcementsQuery = supabase
+      .from("announcements")
+      .select("*", { count: "exact", head: true });
+
+    if (lastSeen) {
+      announcementsQuery.gt("created_at", lastSeen);
+    }
+
+    const { count: announcementCount } = await announcementsQuery;
+
+    const now = new Date();
+    const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const eventsQuery = supabase
+      .from("calendar_events")
+      .select("*", { count: "exact", head: true })
+      .gte("event_date", now.toISOString())
+      .lte("event_date", twoDaysLater.toISOString());
+
+    if (lastSeen) {
+      eventsQuery.gt("created_at", lastSeen);
+    }
+
+    const { count: eventCount } = await eventsQuery;
+
+    setNotifCount(pendingCount + (eventCount ?? 0) + (announcementCount ?? 0));
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefresh(true);
     await fetchAnnouncements();
     await fetchAffirmations();
+    await fetchNotifCount();
     setRefresh(false);
-  }, []);
+  }, [fetchAnnouncements, fetchAffirmations, fetchNotifCount]);
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -83,6 +133,12 @@ export default function Homepage() {
     fetchAnnouncements();
     fetchAffirmations();
   }, [fetchAnnouncements]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifCount();
+    }, [fetchNotifCount]),
+  );
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -123,8 +179,24 @@ export default function Homepage() {
         <Text style={styles.headerTitle}>Dashboard</Text>
 
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/notification")}>
+          <TouchableOpacity
+            onPress={async () => {
+              await AsyncStorage.setItem(
+                "notifLastSeen",
+                new Date().toISOString(),
+              );
+              setNotifCount(0);
+              router.push("/notification");
+            }}
+          >
             <Ionicons name="notifications-outline" size={24} color="white" />
+            {notifCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {notifCount > 99 ? "99+" : notifCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -406,4 +478,19 @@ const styles = StyleSheet.create({
   },
   navItem: { alignItems: "center", justifyContent: "center" },
   navText: { fontSize: 12, marginTop: 4, color: "#2F459B", fontWeight: "500" },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#e74c3c",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "#FFD75E",
+  },
+  badgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
 });
