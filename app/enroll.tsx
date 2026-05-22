@@ -626,12 +626,14 @@ export default function EnrollmentScreen() {
               <Ionicons name="checkmark" size={18} color="#2F459B" />
               <Text style={styles.checkText}>
                 You'll receive an email with your activation code once approved.
+                Kindly check your email regularly to avoid delays in account
+                activation.
               </Text>
             </View>
             <View style={styles.checkItem}>
               <Ionicons name="checkmark" size={18} color="#2F459B" />
               <Text style={styles.checkText}>
-                Relaunch the app to return to the start page.
+                Return to the start page and go to 'Use Enrollment Code'.
               </Text>
             </View>
             <View style={styles.checkItem}>
