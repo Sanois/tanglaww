@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,11 +16,42 @@ import {
   View,
 } from "react-native";
 
+type Announcement = {
+  announcement_id: number;
+  title: string;
+  content: string;
+  created_at: string;
+};
+
 export default function AdminAnnouncement() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [fetchingList, setFetchingList] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const fetchAnnouncements = useCallback(async () => {
+    setFetchingList(true);
+    try {
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("announcement_id, title, content, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      setAnnouncements(data ?? []);
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Could not load announcements.");
+    } finally {
+      setFetchingList(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const handlePublish = async () => {
     if (!title.trim() || !message.trim()) {
@@ -43,16 +74,60 @@ export default function AdminAnnouncement() {
 
       if (error) throw new Error(error.message);
 
+      setTitle("");
+      setMessage("");
       Alert.alert(
         "Published!",
         "Announcement is now visible to all students.",
-        [{ text: "OK", onPress: () => router.back() }],
+        [{ text: "OK" }],
       );
+      fetchAnnouncements();
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Something went wrong.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = (item: Announcement) => {
+    Alert.alert(
+      "Delete Announcement",
+      `Are you sure you want to delete "${item.title}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(item.announcement_id);
+            try {
+              const { error } = await supabase
+                .from("announcements")
+                .delete()
+                .eq("announcement_id", item.announcement_id);
+
+              if (error) throw new Error(error.message);
+              setAnnouncements((prev) =>
+                prev.filter((a) => a.announcement_id !== item.announcement_id),
+              );
+            } catch (err: any) {
+              Alert.alert("Error", err.message ?? "Could not delete.");
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
@@ -74,8 +149,8 @@ export default function AdminAnnouncement() {
             <Ionicons name="megaphone" size={40} color="#FFD75E" />
             <Text style={styles.infoTitle}>Broadcast Message</Text>
             <Text style={styles.infoSubtitle}>
-              The information you post here will be visible to all students on
-              their dashboards.
+              This information will be displayed to all students on their
+              dashboard.
             </Text>
           </View>
 
@@ -108,17 +183,50 @@ export default function AdminAnnouncement() {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <>
-                <Text style={styles.publishText}>Publish</Text>
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color="white"
-                  style={{ marginLeft: 10 }}
-                />
-              </>
+              <Text style={styles.publishText}>Publish</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Previous Announcements</Text>
+          </View>
+
+          {fetchingList ? (
+            <ActivityIndicator color="#2F459B" style={{ marginTop: 20 }} />
+          ) : announcements.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={36} color="#CCC" />
+              <Text style={styles.emptyText}>No announcements yet.</Text>
+            </View>
+          ) : (
+            announcements.map((item) => (
+              <View key={item.announcement_id} style={styles.announcementCard}>
+                <View style={styles.cardLeft}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.cardContent} numberOfLines={2}>
+                    {item.content}
+                  </Text>
+                  <Text style={styles.cardDate}>
+                    {formatDate(item.created_at)}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(item)}
+                  disabled={deletingId === item.announcement_id}
+                >
+                  {deletingId === item.announcement_id ? (
+                    <ActivityIndicator size="small" color="#E53935" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={20} color="#E53935" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -137,7 +245,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "black" },
-  content: { padding: 25 },
+  content: { padding: 25, paddingBottom: 40 },
   infoSection: {
     alignItems: "center",
     marginBottom: 30,
@@ -186,6 +294,64 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     elevation: 3,
+    marginBottom: 35,
   },
   publishText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+    paddingTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2F459B",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 30,
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#AAA",
+  },
+  announcementCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFEFEF",
+    gap: 10,
+  },
+  cardLeft: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A2E",
+    marginBottom: 2,
+  },
+  cardContent: {
+    fontSize: 12,
+    color: "#888",
+    lineHeight: 16,
+  },
+  cardDate: {
+    fontSize: 10,
+    color: "#BBB",
+    marginTop: 2,
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
