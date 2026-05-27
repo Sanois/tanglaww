@@ -101,8 +101,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         adminService.getAuditRequests(),
         adminService.getStudentRegistry(),
       ]);
-      setAuditRequests(auditData);
-      setStudents(studentData);
+
+      const seen = new Set<number>();
+      const deduped = auditData.filter((e: any) => {
+        if (seen.has(e.student_id)) return false;
+        seen.add(e.student_id);
+        return true;
+      });
+
+      const seenStudents = new Set<number>();
+      const dedupedStudents = studentData.filter((e: any) => {
+        if (seenStudents.has(e.student_id)) return false;
+        seenStudents.add(e.student_id);
+        return true;
+      });
+      setAuditRequests(deduped);
+      setStudents(dedupedStudents);
     } catch (error) {
       console.error(error);
     } finally {

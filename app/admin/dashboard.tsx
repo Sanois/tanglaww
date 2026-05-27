@@ -319,6 +319,7 @@ export default function AdminDashboard() {
             </TouchableOpacity>
           ))
         )}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       <View style={styles.bottomNav}>
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: "#EEE",
-    marginBottom: 80,
+    marginBottom: 10,
   },
   avatarCircle: {
     width: 40,

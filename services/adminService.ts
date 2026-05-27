@@ -2,7 +2,10 @@ import { supabase } from "../lib/supabase";
 
 export const adminService = {
   async getAuditRequests() {
-    const { data, error } = await supabase.from("enrollment").select(`
+    const { data, error } = await supabase
+      .from("enrollment")
+      .select(
+        `
                 enrollment_id,
                 student_id,
                 student (
@@ -23,7 +26,9 @@ export const adminService = {
                     verificationStatus,
                     verification_id,
                     verificationNotes
-                )`);
+                )`,
+      )
+      .order("enrollment_id", { ascending: false });
     if (error) {
       return [];
     }
@@ -31,7 +36,10 @@ export const adminService = {
   },
 
   async getStudentRegistry() {
-    const { data, error } = await supabase.from("enrollment").select(`
+    const { data, error } = await supabase
+      .from("enrollment")
+      .select(
+        `
                 enrollment_id,
                 student_id,
                 student (
@@ -53,7 +61,9 @@ export const adminService = {
                      verificationStatus,
                     verification_id,
                     verificationNotes
-                )`);
+                )`,
+      )
+      .order("enrollment_id", { ascending: false });
     if (error) {
       return [];
     }
