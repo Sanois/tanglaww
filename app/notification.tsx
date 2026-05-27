@@ -115,7 +115,7 @@ export default function StudentNotifications() {
       onPress={() => openModal(event)}
     >
       <View style={styles.textContainer}>
-        <Text style={styles.label}>Calendar Event</Text>
+        <Text style={styles.label}>Calendar Event Posted!</Text>
         <Text style={styles.notiTitle}>{event.title}</Text>
         {event.description && (
           <Text style={styles.notiDescription} numberOfLines={1}>
@@ -133,7 +133,7 @@ export default function StudentNotifications() {
   const AnnouncementItem = ({ item }: { item: any }) => (
     <View style={styles.notificationCard}>
       <View style={styles.textContainer}>
-        <Text style={styles.label}>Announcement</Text>
+        <Text style={styles.label}>Announcement Posted!</Text>
         <Text style={styles.notiTitle}>{item.title}</Text>
         {item.content && (
           <Text style={styles.notiDescription} numberOfLines={1}>

@@ -19,13 +19,11 @@ interface Notification {
   label: string;
   title: string;
   description: string;
-  date: string; // formatted date string for display
-  time: string; // formatted time string for display
+  date: string;
+  time: string;
   route?: string;
-  createdAt: string; // ISO — used for Today/Yesterday/Earlier grouping
+  createdAt: string;
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-PH", {
@@ -61,8 +59,6 @@ const isYesterday = (iso: string) => {
   );
 };
 
-// ── Screen ─────────────────────────────────────────────────────────────────
-
 export default function AdminNotification() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -72,7 +68,6 @@ export default function AdminNotification() {
   const fetchNotifications = useCallback(async () => {
     const results: Notification[] = [];
 
-    // Pending enrollments
     const { data: enrollments } = await supabase
       .from("enrollment")
       .select(
@@ -95,7 +90,7 @@ export default function AdminNotification() {
         results.push({
           id: `enrollment-${e.enrollment_id}`,
           type: "enrollment",
-          label: "New Enrollment",
+          label: "New Enrollment Arrived!",
           title: `${e.student?.firstName} ${e.student?.lastName}`,
           description: "Awaiting your review and approval",
           date: formatDate(e.enrollmentDate),
@@ -106,7 +101,6 @@ export default function AdminNotification() {
       }
     });
 
-    // All calendar events
     const { data: events } = await supabase
       .from("calendar_events")
       .select("*")
@@ -116,17 +110,16 @@ export default function AdminNotification() {
       results.push({
         id: `event-${event.event_id}`,
         type: "event",
-        label: "Calendar Event",
+        label: "Calendar Event Posted!",
         title: event.title,
         description: event.description ?? "",
         date: formatDate(event.event_date),
         time: formatTime(event.event_date),
         route: "/admin/calendar",
-        createdAt: event.event_date,
+        createdAt: event.created_at,
       });
     });
 
-    // Enrollments first, then events
     results.sort((a, b) => {
       if (a.type === "enrollment" && b.type !== "enrollment") return -1;
       if (b.type === "enrollment" && a.type !== "enrollment") return 1;
@@ -235,8 +228,6 @@ export default function AdminNotification() {
   );
 }
 
-// ── Card ───────────────────────────────────────────────────────────────────
-
 function NotificationCard({
   notif,
   onPress,
@@ -266,8 +257,6 @@ function NotificationCard({
     </TouchableOpacity>
   );
 }
-
-// ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },

@@ -709,23 +709,6 @@ export default function RegistrantDetails() {
             <Text style={styles.modalStudentName}>{codeStudent?.name}</Text>
             <Text style={styles.modalEmail}>{codeStudent?.email}</Text>
 
-            {emailSent === true && (
-              <View style={styles.emailSuccessBanner}>
-                <Ionicons name="mail" size={16} color="#27ae60" />
-                <Text style={styles.emailSuccessText}>
-                  Email sent successfully to student
-                </Text>
-              </View>
-            )}
-            {emailSent === false && (
-              <View style={styles.emailFailBanner}>
-                <Ionicons name="mail-unread" size={16} color="#E74C3C" />
-                <Text style={styles.emailFailText}>
-                  Email failed — share code manually
-                </Text>
-              </View>
-            )}
-
             <View style={styles.codeDisplay}>
               {generatedCode.split("").map((digit, i) => (
                 <View key={i} style={styles.codeDigitBox}>
@@ -735,7 +718,7 @@ export default function RegistrantDetails() {
             </View>
 
             <Text style={styles.codeExpiry}>
-              Expires in 7 days · One-time use only
+              Expires in 3 days. One-time use only
             </Text>
 
             <TouchableOpacity
@@ -745,11 +728,6 @@ export default function RegistrantDetails() {
               <Ionicons name="send-outline" size={16} color="#2F459B" />
               <Text style={styles.resendBtnText}>Resend Email</Text>
             </TouchableOpacity>
-
-            <Text style={styles.codeInstruction}>
-              If the student doesn't receive the email, share the code above
-              directly via SMS or messaging app.
-            </Text>
 
             <TouchableOpacity
               style={styles.modalCloseBtn}
