@@ -178,7 +178,7 @@ export default function CoursesScreen() {
               !course.isActive && !accessibleCourseIds.has(course.course_id);
             const isExpanded = expandedId === course.course_id;
             const progress = getProgress(course.course_id);
-            const isOnboarding = course.course_id === 1;
+            // const isOnboarding = course.course_id === 1; if need to hide quiz and session links for onboarding course
 
             return (
               <View key={course.course_id} style={styles.cardContainer}>
@@ -268,34 +268,24 @@ export default function CoursesScreen() {
                       <Text style={styles.dropText}>Recorded Sessions</Text>
                     </TouchableOpacity>
 
-                    {!isOnboarding && (
-                      <>
-                        <TouchableOpacity
-                          style={styles.dropItem}
-                          onPress={() => navigateTo("quiz", course)}
-                        >
-                          <Ionicons
-                            name="bulb-outline"
-                            size={20}
-                            color="#2F459B"
-                          />
-                          <Text style={styles.dropText}>Quiz</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.dropItem}
-                          onPress={() => navigateTo("session-links", course)}
-                        >
-                          <Ionicons
-                            name="share-outline"
-                            size={20}
-                            color="#2F459B"
-                          />
-                          <Text style={styles.dropText}>
-                            Online Session Link
-                          </Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
+                    <TouchableOpacity
+                      style={styles.dropItem}
+                      onPress={() => navigateTo("quiz", course)}
+                    >
+                      <Ionicons name="bulb-outline" size={20} color="#2F459B" />
+                      <Text style={styles.dropText}>Quiz</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dropItem}
+                      onPress={() => navigateTo("session-links", course)}
+                    >
+                      <Ionicons
+                        name="share-outline"
+                        size={20}
+                        color="#2F459B"
+                      />
+                      <Text style={styles.dropText}>Online Session Link</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
