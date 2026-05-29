@@ -17,6 +17,8 @@ export const registerSession = async (
   studentId: number,
   token: string,
 ): Promise<void> => {
+  await AsyncStorage.setItem(TOKEN_KEY, token);
+  await AsyncStorage.setItem(STUDENT_ID_KEY, studentId.toString());
   const { error } = await supabase
     .from("student")
     .update({
@@ -26,12 +28,9 @@ export const registerSession = async (
     .eq("id", studentId);
 
   if (error) {
-    console.error("Session register error:", error.message);
-    return;
+    await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.removeItem(STUDENT_ID_KEY);
   }
-
-  await AsyncStorage.setItem(TOKEN_KEY, token);
-  await AsyncStorage.setItem(STUDENT_ID_KEY, studentId.toString());
 };
 
 export const validateSession = async (): Promise<{

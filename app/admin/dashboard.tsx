@@ -69,19 +69,23 @@ export default function AdminDashboard() {
       .from("enrollment")
       .select(
         `
-            enrollment_id,
-            student (firstName, lastName),
-            verification!enrollment_verification_id_fkey (verificationStatus)
-        `,
+      enrollment_id,
+      student (firstName, lastName),
+      verification!enrollment_verification_id_fkey (verificationStatus)
+      `,
       )
-      .limit(3);
+      .order("enrollment_id", { ascending: false })
+      .limit(10);
 
-    const pending = (data ?? []).filter((e: any) => {
-      const v = Array.isArray(e.verification)
-        ? e.verification[0]
-        : e.verification;
-      return v?.verificationStatus === false;
-    });
+    const pending = (data ?? [])
+      .filter((e: any) => {
+        const v = Array.isArray(e.verification)
+          ? e.verification[0]
+          : e.verification;
+        return v?.verificationStatus === false;
+      })
+      .slice(0, 3);
+
     setPendingEnrollments(pending);
   };
 

@@ -830,6 +830,8 @@ export default function EnrollmentScreen() {
                 style={styles.input}
                 placeholder="delacruzjuan@example.com"
                 placeholderTextColor="#666"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 value={dataTypes.email}
                 onChangeText={(val) => setField("email", val)}
               />
@@ -955,6 +957,7 @@ export default function EnrollmentScreen() {
                 style={styles.input}
                 placeholder="Enter Ref #"
                 placeholderTextColor="#666"
+                keyboardType="numeric"
                 value={dataTypes.referenceNumber}
                 onChangeText={(val) => setField("referenceNumber", val)}
               />

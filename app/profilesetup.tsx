@@ -17,8 +17,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAdmin } from "../context/AdminContext";
+import { generateSessionToken, registerSession } from "../lib/session";
 
 export default function ProfileSetupScreen() {
+  const { setStudentDirectly } = useAdmin();
   const router = useRouter();
   const { email, studentId, activationCodeId } = useLocalSearchParams<{
     email: string;
@@ -96,7 +99,6 @@ export default function ProfileSetupScreen() {
       });
 
     if (error) {
-      console.error("Photo upload error:", error.message);
       return null;
     }
 
@@ -187,15 +189,24 @@ export default function ProfileSetupScreen() {
       if (updateError)
         throw new Error("Failed to link account: " + updateError.message);
 
+      const token = await generateSessionToken();
+      await registerSession(Number(studentId), token);
+      setStudentDirectly(Number(studentId));
+
+      const { error: accessError } = await supabase
+        .from("course_access")
+        .insert({
+          student_id: Number(studentId),
+          course_id: 1,
+          unlockedBy: null,
+        });
+
       if (activationCodeId) {
         const { error: codeError } = await supabase
           .from("activation_codes")
           .update({ is_used: true })
           .eq("id", activationCodeId);
-
-        if (codeError) console.error("Code mark error:", codeError.message);
       }
-
       router.replace("/succes");
     } catch (err: any) {
       Alert.alert(
