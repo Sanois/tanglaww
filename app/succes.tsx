@@ -1,16 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import {
+  ActivityIndicator,
   SafeAreaView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { useAdmin } from "../context/AdminContext";
 
 export default function SuccessScreen() {
   const router = useRouter();
+  const { currentStudentId } = useAdmin();
+
+  useEffect(() => {
+    if (currentStudentId) {
+      const timer = setTimeout(() => {
+        router.replace("/homepage" as any);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStudentId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,12 +39,8 @@ export default function SuccessScreen() {
 
       {}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.continueBtn}
-          onPress={() => router.replace("/homepage")}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+        <ActivityIndicator color="#0D2A94" style={{ marginTop: 20 }} />
+        <Text style={styles.loadingText}>Setting up your dashboard...</Text>
       </View>
     </SafeAreaView>
   );
@@ -91,5 +98,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  loadingText: {
+    fontSize: 15,
+    color: "#777",
+    textAlign: "center",
   },
 });

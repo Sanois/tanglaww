@@ -159,9 +159,9 @@ export default function CoursesScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Courses</Text>
         </View>
-        
+
         {/* NAVIGATES DIRECTLY TO THE RECENTLY CREATED DATA ANALYTICS ROUTE */}
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.push("/analytics")}
           activeOpacity={0.7}
           style={styles.analyticsButton}
@@ -214,8 +214,9 @@ export default function CoursesScreen() {
                         style={[
                           styles.progressCircle,
                           {
-                            borderColor: 
-                            Number(progress) >= 100 ? "#2ECC71" : "#BDC3C7",                          },
+                            borderColor:
+                              Number(progress) >= 100 ? "#2ECC71" : "#BDC3C7",
+                          },
                         ]}
                       />
                       <Text style={styles.progressText}>{progress}%</Text>

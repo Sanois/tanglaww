@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
   modalCloseBtnText: { color: "white", fontWeight: "bold", fontSize: 15 },
   rejectedSection: { marginTop: 20 },
   rejectionNotesBox: {
-    backgroundColor: "#fff5f5",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e74c3c",
     borderRadius: 10,

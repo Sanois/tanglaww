@@ -16,6 +16,7 @@ interface AdminContextType {
   refreshData: () => Promise<void>;
   pendingCount: number;
   loading: boolean;
+  setStudentDirectly: (studentId: number) => void;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -30,6 +31,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [auditRequests, setAuditRequests] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const setStudentDirectly = (studentId: number) => {
+    setIsStudent(true);
+    setIsAdmin(false);
+    setCurrentAdminId(null);
+    setCurrentStudentId(studentId);
+    setAuthLoading(false);
+  };
 
   const resolveRole = async (userId: string | null) => {
     if (!userId) {
@@ -55,12 +64,21 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       setAuthLoading(false);
       return;
     }
+    let studentRow = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data } = await supabase
+        .from("student")
+        .select("id")
+        .eq("auth_id", userId)
+        .single();
 
-    const { data: studentRow } = await supabase
-      .from("student")
-      .select("id")
-      .eq("auth_id", userId)
-      .single();
+      if (data) {
+        studentRow = data;
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
 
     if (studentRow) {
       setIsAdmin(false);
@@ -86,8 +104,16 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setSession(session);
-        resolveRole(session?.user?.id ?? null);
+        if (_event === "SIGNED_IN" && session) {
+          setSession(session);
+          resolveRole(session?.user?.id ?? null);
+          return;
+        }
+        if (_event === "SIGNED_OUT") {
+          setSession(null);
+          resolveRole(null);
+          return;
+        }
       },
     );
 
@@ -143,6 +169,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         refreshData,
         pendingCount: auditRequests.length,
         loading,
+        setStudentDirectly,
       }}
     >
       {children}

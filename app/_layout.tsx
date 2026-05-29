@@ -7,95 +7,103 @@ import {
 } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { Stack, usePathname, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, View } from "react-native";
 import Toast from "react-native-toast-message";
 
-export const validatingRole = { current: false };
+export let setGateValidating: (v: boolean) => void = () => {};
+export let triggerRoleCheck: (userId: string) => void = () => {};
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [validating, setValidating] = useState(false);
   const [role, setRole] = useState<"student" | "admin" | null>(null);
+  const fetchingRole = useRef(false);
+  const validatingRef = useRef(false);
+
+  const setValidatingBoth = (v: boolean) => {
+    validatingRef.current = v;
+    setValidating(v);
+  };
 
   const fetchRole = async (userId: string) => {
-    if (validatingRole.current) return;
+    if (fetchingRole.current) {
+      return;
+    }
+    fetchingRole.current = true;
     setLoading(true);
 
-    const { data: admin } = await supabase
-      .from("admin")
-      .select("admin_id")
-      .eq("admin_id", userId)
-      .single();
+    try {
+      const { data: admin } = await supabase
+        .from("admin")
+        .select("admin_id")
+        .eq("admin_id", userId)
+        .single();
 
-    if (admin) {
-      setRole("admin");
-      setLoading(false);
-      return;
-    }
+      if (admin) {
+        setRole("admin");
+        return;
+      }
 
-    const { data: student } = await supabase
-      .from("student")
-      .select("id")
-      .eq("auth_id", userId)
-      .single();
+      const { data: student } = await supabase
+        .from("student")
+        .select("id")
+        .eq("auth_id", userId)
+        .single();
 
-    if (student) {
-      const { valid, studentId } = await validateSession();
+      if (student) {
+        const { valid, studentId } = await validateSession();
 
-      if (studentId === null) {
-        const token = await generateSessionToken();
-        await registerSession(student.id, token);
+        if (studentId === null) {
+          const token = await generateSessionToken();
+          await registerSession(student.id, token);
+          setRole("student");
+          return;
+        }
 
+        if (!valid) {
+          await supabase.auth.signOut();
+          if (studentId) await clearSession(studentId);
+          setRole(null);
+          Alert.alert(
+            "Session Expired",
+            "Your account has been logged in from another device. Please sign in again.",
+            [{ text: "OK" }],
+          );
+          return;
+        }
         setRole("student");
-        setLoading(false);
         return;
       }
 
-      if (!valid) {
-        await supabase.auth.signOut();
-        if (studentId) await clearSession(studentId);
-
-        setRole(null);
-        setLoading(false);
-
-        Alert.alert(
-          "Session Expired",
-          "Your account has been logged in from another device. Please sign in again.",
-          [{ text: "OK" }],
-        );
-        return;
-      }
-
-      setRole("student");
+      setRole(null);
+    } finally {
+      fetchingRole.current = false;
       setLoading(false);
-      return;
     }
-
-    setRole(null);
-    setLoading(false);
   };
 
   useEffect(() => {
+    setGateValidating = setValidatingBoth;
+    triggerRoleCheck = (userId: string) => fetchRole(userId);
     async function loadSession() {
       try {
         const { data, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("Error getting session:", error);
           setLoading(false);
           return;
         }
         const session = data.session;
         setSession(session);
         if (session?.user?.id) {
-          fetchRole(session.user.id);
+          await fetchRole(session.user.id);
         } else {
           setLoading(false);
         }
       } catch (err) {
-        console.error("Unexpected error:", err);
         setLoading(false);
       }
     }
@@ -105,12 +113,27 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (validatingRole.current) return;
-      setSession(session);
-      if (session?.user?.id) fetchRole(session.user.id);
-      else {
+      if (_event === "SIGNED_OUT") {
+        if (validatingRef.current) {
+          validatingRef.current = false;
+          setValidating(false);
+          fetchingRole.current = false;
+          return;
+        }
+        setSession(null);
         setRole(null);
         setLoading(false);
+        fetchingRole.current = false;
+      }
+      if (_event === "SIGNED_IN" && session) {
+        setSession(session);
+        if (validatingRef.current) {
+          return;
+        }
+        if (!fetchingRole.current) {
+          fetchRole(session.user.id);
+        }
+        return;
       }
     });
 
@@ -142,7 +165,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-
+    if (validating) return;
+    if (!session && role !== null) return;
     const inAuthGroup = [
       "/login",
       "/signin",
@@ -156,7 +180,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       "/forgotpass",
     ].includes(pathname);
 
-    const inAdminGroup = pathname.startsWith("/admin");
+    const inAdminGroup =
+      pathname.startsWith("/admin") && !pathname.startsWith("/admin/signin");
     const inMaterialsGroup = pathname.startsWith("/materials");
 
     if (!session) {
@@ -176,7 +201,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         router.replace("/admin/dashboard" as any);
       else if (inAuthGroup) router.replace("/admin/dashboard" as any);
     }
-  }, [session, role, loading, pathname]);
+  }, [session, role, loading, pathname, validating]);
 
   if (loading) {
     return (

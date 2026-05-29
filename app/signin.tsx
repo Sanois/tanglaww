@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { validatingRole } from "./_layout";
+import { setGateValidating, triggerRoleCheck } from "./_layout";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -41,7 +41,7 @@ export default function SignInScreen() {
     }
     setErrors([]);
     setLoading(true);
-    validatingRole.current = true;
+    setGateValidating(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -51,6 +51,7 @@ export default function SignInScreen() {
 
       if (error) {
         setErrors([error.message]);
+        setGateValidating(false);
         return;
       }
 
@@ -77,7 +78,6 @@ export default function SignInScreen() {
         setErrors(["No student account found."]);
         return;
       }
-
       const token = await generateSessionToken();
       await registerSession(student.id, token);
 
@@ -87,22 +87,17 @@ export default function SignInScreen() {
         actorName: `${student.firstName} ${student.lastName}`,
         action: "student_login",
       });
-
       Toast.show({
         type: "success",
-        text1: "You have successfuly signed in!",
+        text1: "You have successfully signed in!",
         position: "bottom",
         visibilityTime: 3500,
       });
-      validatingRole.current = false;
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user?.id) {
-        await supabase.auth.refreshSession();
-      }
+      setGateValidating(false);
+      triggerRoleCheck(data.user.id);
     } catch (err: any) {
       setErrors([err.message ?? "Something went wrong."]);
     } finally {
-      validatingRole.current = false;
       setLoading(false);
     }
   };
@@ -138,7 +133,12 @@ export default function SignInScreen() {
             <TextInput
               style={[
                 styles.input,
-                { flex: 1, borderBottomWidth: 0, marginBottom: 0 },
+                {
+                  flex: 1,
+                  borderBottomWidth: 0,
+                  marginBottom: 0,
+                  color: "#000000",
+                },
               ]}
               placeholder="Password"
               secureTextEntry={!showPassword}
@@ -265,6 +265,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 20,
     fontSize: 16,
+    color: "#000000",
   },
   passwordContainer: {
     flexDirection: "row",

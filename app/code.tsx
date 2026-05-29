@@ -696,17 +696,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   pendingCard: {
-    backgroundColor: "#fffbf0",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#FFB800",
   },
   approvedCard: {
-    backgroundColor: "#f0fff4",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#27ae60",
   },
   rejectedCard: {
-    backgroundColor: "#fff5f5",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e74c3c",
   },

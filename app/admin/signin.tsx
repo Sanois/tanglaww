@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { validatingRole } from "../_layout";
+import { setGateValidating } from "../_layout";
 
 export default function AdminSignIn() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function AdminSignIn() {
     }
     setErrors([]);
     setLoading(true);
-    validatingRole.current = true;
+    setGateValidating(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -43,6 +43,7 @@ export default function AdminSignIn() {
       if (error) {
         setErrors(["Invalid email or password."]);
         setLoading(false);
+        setGateValidating(false);
         return;
       }
       const { data: adminRow } = await supabase
@@ -58,18 +59,18 @@ export default function AdminSignIn() {
         return;
       }
 
-      validatingRole.current = false;
+      setGateValidating(false);
       Toast.show({
         type: "success",
         text1: "You have successfuly signed in",
         position: "bottom",
         visibilityTime: 3500,
       });
+      setGateValidating(false);
       router.replace("/admin/dashboard");
     } catch (err: any) {
       setErrors([err.message ?? "Something went wrong."]);
     } finally {
-      validatingRole.current = false;
       setLoading(false);
     }
   };

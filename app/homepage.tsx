@@ -142,10 +142,10 @@ export default function Homepage() {
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      const { valid } = await validateSession();
+      const { valid, studentId } = await validateSession();
       if (!valid) {
-        await clearSession();
-        router.replace("/login");
+        await supabase.auth.signOut();
+        if (studentId) await clearSession(studentId);
       }
     }, 15000);
 

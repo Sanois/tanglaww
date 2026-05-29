@@ -113,23 +113,6 @@ export default function AdminHamburger({
 
                 <TouchableOpacity
                   style={styles.navItem}
-                  onPress={() => navigateTo("/admin/audit")}
-                >
-                  <Ionicons
-                    name="shield-checkmark-outline"
-                    size={20}
-                    color="#2F459B"
-                  />
-                  <Text style={styles.navText}>Profile Audit Queue</Text>
-                  {pendingCount > 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{pendingCount}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.navItem}
                   onPress={() => navigateTo("/admin/registry")}
                 >
                   <Ionicons name="people-outline" size={20} color="#2F459B" />
