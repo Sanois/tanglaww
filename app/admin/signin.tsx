@@ -105,7 +105,12 @@ export default function AdminSignIn() {
             <TextInput
               style={[
                 styles.input,
-                { flex: 1, borderBottomWidth: 0, marginBottom: 0 },
+                {
+                  flex: 1,
+                  borderBottomWidth: 0,
+                  marginBottom: 0,
+                  color: "#000000",
+                },
               ]}
               placeholder="Password"
               secureTextEntry={!showPassword}

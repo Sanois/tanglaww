@@ -44,28 +44,29 @@ export default function AdminHamburger({
   };
 
   useEffect(() => {
-    const fetchAdmin = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    if (visible) {
+      const fetchAdmin = async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data: adminData } = await supabase
-        .from("admin")
-        .select("firstName, lastName, email")
-        .eq("admin_id", user.id)
-        .maybeSingle();
+        const { data: adminData } = await supabase
+          .from("admin")
+          .select("firstName, lastName, email")
+          .eq("admin_id", user.id)
+          .maybeSingle();
 
-      if (!adminData) return;
-
-      setAdmin({
-        firstName: adminData.firstName,
-        lastName: adminData.lastName,
-        email: adminData.email,
-      });
-    };
-    fetchAdmin();
-  }, []);
+        if (!adminData) return;
+        setAdmin({
+          firstName: adminData.firstName,
+          lastName: adminData.lastName,
+          email: adminData.email,
+        });
+      };
+      fetchAdmin();
+    }
+  }, [visible]);
 
   return (
     <Modal
