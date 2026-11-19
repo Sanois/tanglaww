@@ -1,50 +1,50 @@
 import {
-    ArrowLeft,
-    CheckCircle2,
-    Clock,
-    Download,
-    Eye,
-    FileText,
-    Lightbulb,
-    Lock,
-    LogIn,
-    Play,
-    Share2,
-    Video,
-    VideoOff,
-    X,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Download,
+  Eye,
+  FileText,
+  Lightbulb,
+  Lock,
+  LogIn,
+  Play,
+  Share2,
+  Video,
+  VideoOff,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    useLocation,
-    useNavigate,
-    useParams,
-    useSearchParams,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
 } from "react-router-dom";
 import PdfScrollViewer from "../components/PdfScrollViewer";
 import Sidebar from "../components/Sidebar";
 import {
-    getMyCourseProgress,
-    getMyStudent,
+  getMyCourseProgress,
+  getMyStudent,
 } from "../components/StudentSidePanel";
 import UserTopbar from "../components/UserTopbar";
 import {
-    formatBytes,
-    formatDate,
-    getCourseMaterials,
-    getCourseName,
+  formatBytes,
+  formatDate,
+  getCourseMaterials,
+  getCourseName,
 } from "../lib/materials";
 import {
-    SEGMENT_SECONDS,
-    VIDEO_COMPLETION_THRESHOLD,
-    getCompletedMaterialIds,
-    getTotalViewSeconds,
-    getWatchedSegments,
-    loadYouTubeApi,
-    markMaterialCompleted,
-    recordMaterialView,
-    requiredViewSeconds,
-    videoCoverage,
+  SEGMENT_SECONDS,
+  VIDEO_COMPLETION_THRESHOLD,
+  getCompletedMaterialIds,
+  getTotalViewSeconds,
+  getWatchedSegments,
+  loadYouTubeApi,
+  markMaterialCompleted,
+  recordMaterialView,
+  requiredViewSeconds,
+  videoCoverage,
 } from "../lib/studentProgress";
 import { supabase } from "../lib/supabase";
 import "./Dashboard.css";
@@ -306,7 +306,9 @@ function DocumentViewer({
   const remaining =
     previous == null ? required : Math.max(0, required - previous - active);
 
-  const footer = tracking && (completed || saving || error || !isPdf) && (
+  // Shown for every handout. PDFs complete when the reviewee reaches the end;
+  // the button is a backup in case reaching the end is not detected.
+  const footer = tracking && (
     <div
       style={{
         display: "flex",
@@ -325,7 +327,9 @@ function DocumentViewer({
           : saving
             ? "Saving your progress..."
             : remaining > 0
-              ? `Keep reading. You can mark this as finished in ${formatClock(remaining)}.`
+              ? isPdf
+                ? `Scroll to the end to complete. Or mark it as finished in ${formatClock(remaining)}.`
+                : `Keep reading. You can mark this as finished in ${formatClock(remaining)}.`
               : "Done reading? Mark it as finished."}
       </span>
       {error && (
@@ -333,7 +337,7 @@ function DocumentViewer({
           {error}
         </span>
       )}
-      {!completed && !isPdf && (
+      {!completed && (
         <button
           type="button"
           disabled={remaining > 0 || saving}
