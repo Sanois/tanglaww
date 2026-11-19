@@ -1,11 +1,12 @@
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,12 +23,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RemedialSection from "../../components/RemedialSection";
 import { readFileBytes } from "../../lib/readFileBytes";
 
 type QuestionType = "mcq" | "identification" | "matching";
 
 interface ChoiceDraft {
   key: string;
+  choiceId?: number;
   choiceText: string;
   imageUrl: string | null;
   isCorrect: boolean;
@@ -38,11 +41,15 @@ interface AnswerDraft {
 }
 interface PairDraft {
   key: string;
+  pairId?: number;
   leftText: string;
   rightText: string;
 }
 interface QuestionDraft {
   key: string;
+  // Database ids: kept so a quiz that reviewees already took is updated
+  // question by question and their attempts can be regraded
+  questionId?: number;
   questionType: QuestionType;
   questionText: string;
   points: string;
@@ -139,6 +146,14 @@ const cleanQuestion = (q: QuestionDraft): QuestionDraft => ({
     }))
     .filter((p) => p.leftText !== "" && p.rightText !== ""),
 });
+
+const confirmAsync = (title: string, message: string, okText: string) =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(title, message, [
+      { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+      { text: okText, onPress: () => resolve(true) },
+    ]),
+  );
 
 const hasDuplicates = (values: string[]) =>
   new Set(values.map((v) => v.toLowerCase())).size !== values.length;
@@ -271,6 +286,7 @@ export default function QuizEditorScreen() {
     assessmentId?: string;
     moduleId?: string;
     diagnostic?: string;
+    remedial?: string;
   }>();
   const isDiagnostic = params.diagnostic === "1";
   const courseId = Number(params.courseId);
@@ -296,10 +312,45 @@ export default function QuizEditorScreen() {
   const [modules, setModules] = useState<ModuleOption[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [hasAttempts, setHasAttempts] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
   const [editing, setEditing] = useState<{
     index: number | null;
     draft: QuestionDraft;
+    start?: QuestionDraft;
   } | null>(null);
+
+  // Remedial quiz: only the chosen reviewees see it. "Create remedial" on
+  // the Analytics screen opens a new quiz with remedial=1.
+  const [isRemedial, setIsRemedial] = useState(
+    !assessmentId && !isDiagnostic && params.remedial === "1",
+  );
+  const [remedialTopicId, setRemedialTopicId] = useState<number | null>(null);
+  const [remedialStudents, setRemedialStudents] = useState<number[]>([]);
+  const [savedRemedial, setSavedRemedial] = useState(false);
+  const [savedStudentIds, setSavedStudentIds] = useState<number[]>([]);
+  const keepSavedList = useRef(false);
+
+  // Tags allowed in a remedial quiz: the chosen minor topic, or the minor
+  // topics of the chosen major topic
+  const remedialTopicName =
+    topics.find((t) => t.topic_id === remedialTopicId)?.topicName ?? "";
+  const allowedTopicIds = useMemo(() => {
+    if (!isRemedial || !remedialTopicId) return null;
+    const children = topics
+      .filter((t) => t.parent_id === remedialTopicId)
+      .map((t) => t.topic_id);
+    return children.length > 0 ? children : [remedialTopicId];
+  }, [isRemedial, remedialTopicId, topics]);
+
+  // ---- Unsaved work backup ---------------------------------------------
+  // Everything typed is kept on the phone while editing, so leaving the
+  // screen or the app closing does not lose it. It comes back when the
+  // quiz is opened again, and is removed once the quiz is saved.
+  const draftKey = `tanglaw.quizDraft.${assessmentId ? `quiz-${assessmentId}` : `new-${courseId}-${isDiagnostic ? "diagnostic" : "quiz"}`}`;
+  const [modalDraft, setModalDraft] = useState<QuestionDraft | null>(null);
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  const baselineRef = useRef<any>(null);
+  const skipBackupRef = useRef(false);
 
   const totalPoints = useMemo(
     () => questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0),
@@ -308,6 +359,150 @@ export default function QuizEditorScreen() {
 
   const topicName = (id: number | null) =>
     topics.find((t) => t.topic_id === id)?.topicName ?? "No tag";
+
+  const formState = useMemo(
+    () => ({
+      title,
+      instructions,
+      moduleId,
+      deadline: deadline ? deadline.toISOString() : null,
+      maxAttempts,
+      passingScore,
+      timeLimit,
+      showCorrectAnswers,
+      closeAfterDeadline,
+      isClosed,
+      questions,
+      isRemedial,
+      remedialTopicId,
+      remedialStudents,
+    }),
+    [
+      title,
+      instructions,
+      moduleId,
+      deadline,
+      maxAttempts,
+      passingScore,
+      timeLimit,
+      showCorrectAnswers,
+      closeAfterDeadline,
+      isClosed,
+      questions,
+      isRemedial,
+      remedialTopicId,
+      remedialStudents,
+    ],
+  );
+  // Compare without the random keys the list needs
+  const comparable = (form: any) =>
+    JSON.stringify(form, (k, v) => (k === "key" ? undefined : v));
+  const modalChanged =
+    !!modalDraft &&
+    !!editing &&
+    comparable(modalDraft) !== comparable(editing.draft);
+  const isDirty =
+    baselineRef.current !== null &&
+    (comparable(formState) !== comparable(baselineRef.current) || modalChanged);
+
+  const applyForm = (f: any) => {
+    setTitle(f.title ?? "");
+    setInstructions(f.instructions ?? "");
+    setModuleId(f.moduleId ?? null);
+    setDeadline(f.deadline ? new Date(f.deadline) : null);
+    setMaxAttempts(f.maxAttempts ?? "1");
+    setPassingScore(f.passingScore ?? "");
+    setTimeLimit(f.timeLimit ?? "");
+    setShowCorrectAnswers(!!f.showCorrectAnswers);
+    setCloseAfterDeadline(!!f.closeAfterDeadline);
+    setIsClosed(!!f.isClosed);
+    setQuestions(f.questions ?? []);
+    setIsRemedial(!!f.isRemedial);
+    setRemedialTopicId(f.remedialTopicId ?? null);
+    setRemedialStudents(f.remedialStudents ?? []);
+  };
+
+  const clearBackup = () => AsyncStorage.removeItem(draftKey).catch(() => {});
+
+  // After the quiz loads: remember it, then bring back any unsaved work
+  useEffect(() => {
+    if (loading || baselineRef.current !== null) return;
+    baselineRef.current = formState;
+    AsyncStorage.getItem(draftKey)
+      .then((raw) => {
+        const saved = raw ? JSON.parse(raw) : null;
+        if (!saved?.form) return;
+        if (
+          comparable(saved.form) === comparable(formState) &&
+          !saved.editing
+        ) {
+          clearBackup();
+          return;
+        }
+        if (saved.form.isRemedial && saved.form.remedialTopicId)
+          keepSavedList.current = true;
+        applyForm(saved.form);
+        if (saved.editing?.draft) {
+          setEditing({
+            index: saved.editing.index,
+            draft: saved.editing.original ?? saved.editing.draft,
+            start: saved.editing.draft,
+          });
+        }
+        setRestoredAt(saved.savedAt ?? Date.now());
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  // Keep the backup up to date while editing
+  useEffect(() => {
+    if (loading || baselineRef.current === null || skipBackupRef.current)
+      return;
+    const timer = setTimeout(() => {
+      if (isDirty) {
+        AsyncStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            form: formState,
+            editing:
+              modalChanged && editing
+                ? {
+                    index: editing.index,
+                    original: editing.draft,
+                    draft: modalDraft,
+                  }
+                : null,
+            savedAt: Date.now(),
+          }),
+        ).catch(() => {});
+      } else {
+        clearBackup();
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState, modalDraft, editing, loading]);
+
+  const discardRestored = () =>
+    Alert.alert(
+      "Discard restored changes?",
+      "This goes back to the last saved version of the quiz.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            clearBackup();
+            if (baselineRef.current) applyForm(baselineRef.current);
+            setEditing(null);
+            setModalDraft(null);
+            setRestoredAt(null);
+          },
+        },
+      ],
+    );
 
   useEffect(() => {
     const load = async () => {
@@ -371,6 +566,7 @@ export default function QuizEditorScreen() {
           .sort((x: any, y: any) => x.position - y.position)
           .map((q: any) => ({
             key: newKey(),
+            questionId: q.question_id,
             questionType: q.questionType as QuestionType,
             questionText: q.questionText,
             imageUrl: q.image_url ?? null,
@@ -380,6 +576,7 @@ export default function QuizEditorScreen() {
               .sort((x: any, y: any) => x.choice_id - y.choice_id)
               .map((c: any) => ({
                 key: newKey(),
+                choiceId: c.choice_id,
                 choiceText: c.choiceText ?? "",
                 imageUrl: c.image_url ?? null,
                 isCorrect: c.isCorrect,
@@ -390,11 +587,14 @@ export default function QuizEditorScreen() {
                 answerText: ans.answerText,
               }),
             ),
-            pairs: (q.assessment_matching_pair ?? []).map((p: any) => ({
-              key: newKey(),
-              leftText: p.leftText,
-              rightText: p.rightText,
-            })),
+            pairs: [...(q.assessment_matching_pair ?? [])]
+              .sort((x: any, y: any) => x.pair_id - y.pair_id)
+              .map((p: any) => ({
+                key: newKey(),
+                pairId: p.pair_id,
+                leftText: p.leftText,
+                rightText: p.rightText,
+              })),
           }));
         setQuestions(loaded);
 
@@ -403,6 +603,22 @@ export default function QuizEditorScreen() {
           .select("attempt_id", { count: "exact", head: true })
           .eq("assessment_id", assessmentId);
         setHasAttempts((count ?? 0) > 0);
+        setAttemptCount(count ?? 0);
+
+        if (!isDiagnostic) {
+          const { data: remedial } = await supabase.rpc("get_remedial", {
+            p_assessment_id: assessmentId,
+          });
+          const r: any = remedial;
+          if (r?.topicId) {
+            keepSavedList.current = true;
+            setIsRemedial(true);
+            setSavedRemedial(true);
+            setRemedialTopicId(r.topicId);
+            setRemedialStudents(r.studentIds ?? []);
+            setSavedStudentIds(r.studentIds ?? []);
+          }
+        }
       } else if (params.moduleId) {
         setModuleId(Number(params.moduleId));
       } else if (moduleList.length === 1) {
@@ -440,6 +656,7 @@ export default function QuizEditorScreen() {
       return copy;
     });
     setEditing(null);
+    setModalDraft(null);
   };
 
   const removeQuestion = (index: number) => {
@@ -467,6 +684,17 @@ export default function QuizEditorScreen() {
   const validateQuiz = (publish: boolean): string | null => {
     if (!title.trim()) return "Enter a quiz title.";
     if (!moduleId) return "Select a module.";
+    if (isRemedial && !remedialTopicId)
+      return "Select the topic for the remedial quiz.";
+    if (isRemedial && remedialStudents.length === 0)
+      return "Choose at least one reviewee for the remedial quiz.";
+    if (isRemedial && allowedTopicIds) {
+      const wrong = questions.findIndex(
+        (q) => !allowedTopicIds.includes(q.topicId as number),
+      );
+      if (wrong >= 0)
+        return `Question ${wrong + 1} is tagged "${topicName(questions[wrong].topicId)}". In a remedial quiz for ${remedialTopicName}, every question must use its tags. Edit the question to change its tag.`;
+    }
     if (!publish) return null;
 
     if (questions.length === 0) return "Add at least one question.";
@@ -485,6 +713,16 @@ export default function QuizEditorScreen() {
     const error = validateQuiz(publish);
     if (error) {
       Alert.alert("Cannot save", error);
+      return;
+    }
+    if (
+      hasAttempts &&
+      !(await confirmAsync(
+        "Regrade attempts?",
+        `Reviewees already took this quiz (${attemptCount} ${attemptCount === 1 ? "attempt" : "attempts"}). Saving will regrade all of them with the current questions and answers.`,
+        "Save",
+      ))
+    ) {
       return;
     }
 
@@ -511,10 +749,17 @@ export default function QuizEditorScreen() {
       showCorrectAnswers,
       closeAfterDeadline,
       isClosed,
-      isPublished: publish,
+      // A remedial that is not published yet is saved as a draft first, then
+      // published by set_remedial after its list is saved, so only the
+      // chosen reviewees are notified.
+      isPublished: isRemedial && !isPublished ? false : publish,
       module_id: moduleId,
       admin_id: adminId,
+      // A quiz that reviewees already took is updated question by question
+      // (by id) and their attempts are regraded with the new answer key
+      editAnswered: hasAttempts,
       questions: questions.map((q) => ({
+        question_id: q.questionId ?? null,
         questionType: q.questionType,
         questionText: q.questionText,
         image_url: q.imageUrl ?? null,
@@ -523,6 +768,7 @@ export default function QuizEditorScreen() {
         choices:
           q.questionType === "mcq"
             ? q.choices.map((c) => ({
+                choice_id: c.choiceId ?? null,
                 choiceText: c.choiceText,
                 image_url: c.imageUrl ?? null,
                 isCorrect: c.isCorrect,
@@ -535,6 +781,7 @@ export default function QuizEditorScreen() {
         pairs:
           q.questionType === "matching"
             ? q.pairs.map((p) => ({
+                pair_id: p.pairId ?? null,
                 leftText: p.leftText,
                 rightText: p.rightText,
               }))
@@ -542,15 +789,38 @@ export default function QuizEditorScreen() {
       })),
     };
 
-    const { error: rpcError } = await supabase.rpc("save_assessment", {
-      p: payload,
-    });
-    setSaving(false);
+    const { data: savedId, error: rpcError } = await supabase.rpc(
+      "save_assessment",
+      { p: payload },
+    );
 
     if (rpcError) {
+      setSaving(false);
       Alert.alert("Error", rpcError.message);
       return;
     }
+
+    if (isRemedial || savedRemedial) {
+      const { error: remedialError } = await supabase.rpc("set_remedial", {
+        p_assessment_id: (savedId as number) ?? assessmentId,
+        p_topic_id: isRemedial ? remedialTopicId : null,
+        p_student_ids: isRemedial ? remedialStudents : [],
+        p_publish: publish,
+      });
+      if (remedialError) {
+        setSaving(false);
+        Alert.alert(
+          "Remedial list not saved",
+          `The quiz was saved, but its remedial list was not: ${remedialError.message}\n\nOpen the quiz again to fix it.${isRemedial && !isPublished ? " It stays a draft until then." : ""}`,
+        );
+        router.back();
+        return;
+      }
+    }
+
+    setSaving(false);
+    skipBackupRef.current = true;
+    clearBackup();
     Alert.alert(publish ? "Quiz saved and published" : "Draft saved");
     router.back();
   };
@@ -574,7 +844,11 @@ export default function QuizEditorScreen() {
             p_id: assessmentId,
           });
           if (error) Alert.alert("Error", error.message);
-          else router.back();
+          else {
+            skipBackupRef.current = true;
+            clearBackup();
+            router.back();
+          }
         },
       },
     ]);
@@ -609,6 +883,24 @@ export default function QuizEditorScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
+          {restoredAt && (
+            <View style={styles.restoredBanner}>
+              <Text style={styles.restoredText}>
+                Your unsaved changes from{" "}
+                {new Date(restoredAt).toLocaleString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}{" "}
+                were brought back. Save the quiz to keep them.
+              </Text>
+              <TouchableOpacity onPress={discardRestored}>
+                <Text style={styles.restoredDiscard}>Discard them</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <Text style={styles.label}>Title:</Text>
           <TextInput
             style={styles.input}
@@ -753,19 +1045,43 @@ export default function QuizEditorScreen() {
             />
           </View>
 
+          {!isDiagnostic && (
+            <RemedialSection
+              enabled={isRemedial}
+              onEnabledChange={setIsRemedial}
+              topics={topics}
+              topicId={remedialTopicId}
+              onTopicChange={(id) => {
+                setRemedialTopicId(id);
+                if (id && !title.trim()) {
+                  const name = topics.find((t) => t.topic_id === id)?.topicName;
+                  if (name) setTitle(`Remedial: ${name}`);
+                }
+              }}
+              chosen={remedialStudents}
+              onChosenChange={setRemedialStudents}
+              keepSavedList={keepSavedList}
+              savedIds={savedStudentIds}
+              assessmentId={assessmentId}
+            />
+          )}
+
           <View style={styles.divider} />
 
           {hasAttempts && (
             <View style={styles.lockBanner}>
               <Ionicons
-                name="lock-closed"
+                name="alert-circle-outline"
                 size={16}
                 color={COLORS.warningText}
               />
               <Text style={styles.lockText}>
-                Students have already taken this quiz, so the questions are
-                locked to keep their results accurate. You can still change the
-                settings above.
+                Reviewees have already taken this quiz ({attemptCount}{" "}
+                {attemptCount === 1 ? "attempt" : "attempts"}). You can still
+                edit the questions and answers. When you save, every attempt is
+                regraded with the new answer key. Removed questions or choices
+                are removed from their answers; new questions count as
+                unanswered for past attempts.
               </Text>
             </View>
           )}
@@ -774,17 +1090,15 @@ export default function QuizEditorScreen() {
             <Text style={styles.sectionTitle}>
               Questions ({questions.length})
             </Text>
-            {!hasAttempts && (
-              <TouchableOpacity
-                style={styles.addQuestionBtn}
-                onPress={() =>
-                  setEditing({ index: null, draft: emptyQuestion() })
-                }
-              >
-                <Text style={styles.addQuestionText}>Add question</Text>
-                <Ionicons name="add" size={22} color={COLORS.text} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.addQuestionBtn}
+              onPress={() =>
+                setEditing({ index: null, draft: emptyQuestion() })
+              }
+            >
+              <Text style={styles.addQuestionText}>Add question</Text>
+              <Ionicons name="add" size={22} color={COLORS.text} />
+            </TouchableOpacity>
           </View>
 
           {questions.length === 0 && (
@@ -797,7 +1111,6 @@ export default function QuizEditorScreen() {
             <TouchableOpacity
               key={q.key}
               style={styles.questionCard}
-              disabled={hasAttempts}
               onPress={() => setEditing({ index, draft: { ...q } })}
             >
               <View style={{ flex: 1 }}>
@@ -818,36 +1131,41 @@ export default function QuizEditorScreen() {
                 <Text style={styles.questionCardTag}>
                   {topicName(q.topicId)}
                 </Text>
+                {allowedTopicIds &&
+                  !allowedTopicIds.includes(q.topicId as number) && (
+                    <Text
+                      style={[styles.questionCardTag, { color: COLORS.danger }]}
+                    >
+                      Not a {remedialTopicName} tag. Edit this question to
+                      change it.
+                    </Text>
+                  )}
               </View>
-              {!hasAttempts && (
-                <View style={styles.questionActions}>
-                  <TouchableOpacity onPress={() => moveQuestion(index, -1)}>
-                    <Ionicons
-                      name="chevron-up"
-                      size={20}
-                      color={index === 0 ? "#C8CCD4" : COLORS.accent}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => moveQuestion(index, 1)}>
-                    <Ionicons
-                      name="chevron-down"
-                      size={20}
-                      color={
-                        index === questions.length - 1
-                          ? "#C8CCD4"
-                          : COLORS.accent
-                      }
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeQuestion(index)}>
-                    <Ionicons
-                      name="trash-outline"
-                      size={18}
-                      color={COLORS.danger}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={styles.questionActions}>
+                <TouchableOpacity onPress={() => moveQuestion(index, -1)}>
+                  <Ionicons
+                    name="chevron-up"
+                    size={20}
+                    color={index === 0 ? "#C8CCD4" : COLORS.accent}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => moveQuestion(index, 1)}>
+                  <Ionicons
+                    name="chevron-down"
+                    size={20}
+                    color={
+                      index === questions.length - 1 ? "#C8CCD4" : COLORS.accent
+                    }
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeQuestion(index)}>
+                  <Ionicons
+                    name="trash-outline"
+                    size={18}
+                    color={COLORS.danger}
+                  />
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           ))}
 
@@ -889,11 +1207,17 @@ export default function QuizEditorScreen() {
       {editing && (
         <QuestionEditorModal
           key={editing.draft.key}
-          initial={editing.draft}
+          initial={editing.start ?? editing.draft}
           isNew={editing.index === null}
           topics={topics}
-          onCancel={() => setEditing(null)}
+          allowedTopicIds={allowedTopicIds}
+          remedialTopicName={remedialTopicName}
+          onCancel={() => {
+            setEditing(null);
+            setModalDraft(null);
+          }}
           onSave={saveQuestion}
+          onDraftChange={setModalDraft}
         />
       )}
     </SafeAreaView>
@@ -927,18 +1251,46 @@ function QuestionEditorModal(props: {
   initial: QuestionDraft;
   isNew: boolean;
   topics: Topic[];
+  allowedTopicIds?: number[] | null;
+  remedialTopicName?: string;
   onCancel: () => void;
   onSave: (q: QuestionDraft) => void;
+  onDraftChange?: (q: QuestionDraft) => void;
 }) {
   const { topics } = props;
-  const [draft, setDraft] = useState<QuestionDraft>(props.initial);
+  // In a remedial quiz, only the remedial topic's tags can be chosen
+  const allowed = props.allowedTopicIds ? new Set(props.allowedTopicIds) : null;
+  const okTopic = (id: number | null) =>
+    !allowed || (id !== null && allowed.has(id));
 
-  const majors = topics.filter((t) => t.parent_id === null);
+  const [draft, setDraft] = useState<QuestionDraft>(() => {
+    let d = props.initial;
+    if (d.topicId && !okTopic(d.topicId)) d = { ...d, topicId: null };
+    if (!d.topicId && allowed && allowed.size === 1)
+      d = { ...d, topicId: [...allowed][0] };
+    return d;
+  });
+
+  // Let the editor keep a backup of the question being typed
+  useEffect(() => {
+    props.onDraftChange?.(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
+
+  const majors = topics.filter(
+    (t) =>
+      t.parent_id === null &&
+      (!allowed ||
+        topics.some(
+          (c) => c.parent_id === t.topic_id && allowed.has(c.topic_id),
+        )),
+  );
   const initialMajor =
-    topics.find((t) => t.topic_id === props.initial.topicId)?.parent_id ?? null;
+    topics.find((t) => t.topic_id === draft.topicId)?.parent_id ??
+    (allowed && majors.length === 1 ? majors[0].topic_id : null);
   const [majorId, setMajorId] = useState<number | null>(initialMajor);
   const minors = topics.filter(
-    (t) => majorId !== null && t.parent_id === majorId,
+    (t) => majorId !== null && t.parent_id === majorId && okTopic(t.topic_id),
   );
 
   const update = (changes: Partial<QuestionDraft>) =>
@@ -1046,6 +1398,12 @@ function QuestionEditorModal(props: {
             </View>
 
             <Text style={styles.label}>Major tag:</Text>
+            {allowed && (
+              <Text style={styles.hint}>
+                This is a remedial quiz for {props.remedialTopicName}, so only
+                its tags are shown.
+              </Text>
+            )}
             {majors.length === 0 ? (
               <Text style={styles.hint}>
                 No topics yet. Add major and minor topics to the topic table
@@ -1395,6 +1753,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   lockText: { flex: 1, fontSize: 12, color: COLORS.warningText },
+  restoredBanner: {
+    backgroundColor: "#EEF1FF",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 6,
+    gap: 6,
+  },
+  restoredText: { fontSize: 12, color: COLORS.accent },
+  restoredDiscard: { fontSize: 12, fontWeight: "600", color: COLORS.danger },
 
   questionHeader: {
     flexDirection: "row",
