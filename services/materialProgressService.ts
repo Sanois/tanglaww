@@ -19,9 +19,12 @@ export function videoCoverage(
   return Math.min(1, covered / total);
 }
 
-export const MIN_VIEW_SECONDS = 60;
-export const MAX_REQUIRED_VIEW_SECONDS = 300;
-const SECONDS_PER_MB = 30;
+// Reading time before "I've finished reading" can be pressed, used only when
+// reaching the end of the handout is not detected: 30 seconds plus 15 seconds
+// per MB, at most 2 minutes.
+export const MIN_VIEW_SECONDS = 30;
+export const MAX_REQUIRED_VIEW_SECONDS = 120;
+const SECONDS_PER_MB = 15;
 export const MAX_SESSION_SECONDS = 30 * 60;
 
 export function requiredViewSeconds(fileSizeBytes: number | null): number {

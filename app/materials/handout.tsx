@@ -3,10 +3,11 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Platform,
   SafeAreaView,
@@ -25,8 +26,10 @@ import {
 } from "../../services/materialAdminService";
 import {
   getCompletedMaterialIds,
+  getTotalViewSeconds,
   markMaterialCompleted,
   recordMaterialView,
+  requiredViewSeconds,
 } from "../../services/materialProgressService";
 import {
   deleteMaterial,
@@ -179,32 +182,102 @@ const DETECT_BOTTOM_JS = `
   true;
 `;
 
+const formatClock = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
+
 function InAppViewer({
   material,
+  studentId,
   onClose,
-  onReachedBottom,
+  onComplete,
   trackProgress,
   alreadyCompleted,
 }: {
   material: LearningMaterial;
+  studentId: number | null;
   onClose: () => void;
-  onReachedBottom?: () => void;
+  // Saves the completion; throws if it could not be saved
+  onComplete?: (viewSeconds: number) => Promise<void>;
   trackProgress: boolean;
   alreadyCompleted: boolean;
 }) {
   const [webLoading, setWebLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [completed, setCompleted] = useState(alreadyCompleted);
+  const [saving, setSaving] = useState(false);
+  const [active, setActive] = useState(0);
+  const [previous, setPrevious] = useState<number | null>(null);
+  const activeRef = useRef(0);
+  const startedAt = useRef(new Date());
+  const recorded = useRef(false);
+  const busy = useRef(false);
   const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
     material.fileUrl,
   )}&embedded=true`;
 
+  // Count reading time only while the app is on screen
+  useEffect(() => {
+    if (!trackProgress || !studentId) return;
+    getTotalViewSeconds(studentId, material.material_id)
+      .then(setPrevious)
+      .catch(() => setPrevious(0));
+    const timer = setInterval(() => {
+      if (AppState.currentState === "active") {
+        activeRef.current += 1;
+        setActive(activeRef.current);
+      }
+    }, 1000);
+    const viewStartedAt = startedAt.current;
+    return () => {
+      clearInterval(timer);
+      // Save the reading time when the handout is closed
+      if (!recorded.current && activeRef.current > 0) {
+        recordMaterialView(
+          studentId,
+          material.material_id,
+          viewStartedAt,
+          activeRef.current,
+        ).catch(() => {});
+      }
+    };
+  }, [trackProgress, studentId, material.material_id]);
+
+  const complete = async () => {
+    if (!trackProgress || !onComplete || completed || busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      let total = activeRef.current;
+      if (studentId) {
+        total = await recordMaterialView(
+          studentId,
+          material.material_id,
+          startedAt.current,
+          activeRef.current,
+        );
+        recorded.current = true;
+      }
+      await onComplete(total);
+      setCompleted(true);
+    } catch (err: any) {
+      recorded.current = false;
+      Alert.alert("Progress not saved", err?.message ?? "Please try again.");
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  };
+
   const handleMessage = (event: { nativeEvent: { data: string } }) => {
     if (event.nativeEvent.data !== "reached_bottom") return;
-    if (!trackProgress || completed) return;
-    setCompleted(true);
-    onReachedBottom?.();
+    complete();
   };
+
+  // Backup in case reaching the end is not detected: after the reading
+  // time, the reviewee can mark it as finished themselves.
+  const required = requiredViewSeconds(material.fileSize);
+  const remaining =
+    previous == null ? required : Math.max(0, required - previous - active);
 
   return (
     <SafeAreaView style={viewer.container}>
@@ -261,6 +334,44 @@ function InAppViewer({
         javaScriptEnabled
         domStorageEnabled
       />
+
+      {trackProgress && (
+        <View style={viewer.footer}>
+          <Text style={[viewer.footerText, completed && { color: "#1E9E5A" }]}>
+            {completed
+              ? "You've completed this module."
+              : saving
+                ? "Saving your progress..."
+                : remaining > 0
+                  ? `Scroll to the end to complete. Or mark it as finished in ${formatClock(remaining)}.`
+                  : "Done reading? Mark it as finished."}
+          </Text>
+          {!completed && (
+            <TouchableOpacity
+              style={[
+                viewer.finishBtn,
+                (remaining > 0 || saving) && viewer.finishBtnDisabled,
+              ]}
+              disabled={remaining > 0 || saving}
+              onPress={complete}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={16}
+                color={remaining > 0 ? "#888" : "white"}
+              />
+              <Text
+                style={[
+                  viewer.finishBtnText,
+                  remaining > 0 && { color: "#888" },
+                ]}
+              >
+                I've finished reading
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -384,19 +495,29 @@ export default function HandoutScreen() {
     }
   };
 
-  const completeOnReachedBottom = async (item: LearningMaterial) => {
+  // Saves the completion and checks that it was really saved. Throws with a
+  // message the viewer shows if it was not (for example, an expired login).
+  const completeHandout = async (
+    item: LearningMaterial,
+    viewSeconds: number,
+  ) => {
     if (!isStudent || !currentStudentId) return;
     if (completedMaterialIds.has(item.material_id)) return;
-    try {
-      await markMaterialCompleted(
-        currentStudentId,
-        item.material_id,
-        "scrolled_to_end",
+    await markMaterialCompleted(
+      currentStudentId,
+      item.material_id,
+      "scrolled_to_end",
+      viewSeconds,
+    );
+    const saved = await getCompletedMaterialIds(currentStudentId, [
+      item.material_id,
+    ]);
+    if (!saved.has(item.material_id)) {
+      throw new Error(
+        "Your progress could not be saved. Please sign out, sign in again, and reopen this module.",
       );
-      markCompletedLocally(item.material_id);
-    } catch (err) {
-      console.warn("[module] saving completion failed", err);
     }
+    markCompletedLocally(item.material_id);
   };
 
   const handleUpload = async () => {
@@ -561,10 +682,11 @@ export default function HandoutScreen() {
     return (
       <InAppViewer
         material={item}
+        studentId={currentStudentId ?? null}
         onClose={() => setViewingMaterial(null)}
         trackProgress={!!(isStudent && currentStudentId)}
         alreadyCompleted={completedMaterialIds.has(item.material_id)}
-        onReachedBottom={() => completeOnReachedBottom(item)}
+        onComplete={(seconds) => completeHandout(item, seconds)}
       />
     );
   }
@@ -995,4 +1117,24 @@ const viewer = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 32,
   },
+  footer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#DDD",
+    backgroundColor: "white",
+    gap: 10,
+  },
+  footerText: { fontSize: 13, color: "#555" },
+  finishBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#0D2A94",
+    borderRadius: 8,
+    paddingVertical: 10,
+  },
+  finishBtnDisabled: { backgroundColor: "#E0E4EF" },
+  finishBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
 });

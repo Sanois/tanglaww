@@ -17,7 +17,7 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import Toast, { BaseToast, ToastConfig } from "react-native-toast-message";
 
@@ -46,7 +46,10 @@ const AUTH_ROUTES = [
   "/forgotpass",
 ];
 
-const SESSION_CHECK_MS = 15_000;
+// How often a student's one-device login is checked while the app is open
+// (it is also checked each time the app is reopened). Every check reads the
+// database, so checking less often saves disk IO.
+const SESSION_CHECK_MS = 60_000;
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -303,10 +306,13 @@ function ThemedApp() {
     SystemUI.setBackgroundColorAsync(bg).catch(() => {});
   }, [bg]);
 
-  const navTheme = {
-    ...(isDark ? DarkTheme : DefaultTheme),
-    colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: bg },
-  };
+  const navTheme = useMemo(
+    () => ({
+      ...(isDark ? DarkTheme : DefaultTheme),
+      colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: bg },
+    }),
+    [isDark, bg],
+  );
 
   return (
     <NavThemeProvider value={navTheme}>

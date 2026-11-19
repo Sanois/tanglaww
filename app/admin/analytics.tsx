@@ -82,6 +82,26 @@ export default function AdminAnalytics() {
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [remedialPickerOpen, setRemedialPickerOpen] = useState(false);
+
+  // "Create remedial": opens a new quiz in the editor with Remedial on.
+  // With more than one course, the admin first picks the course.
+  const openRemedial = (course: { course_id: number; courseName: string }) => {
+    setRemedialPickerOpen(false);
+    router.push({
+      pathname: "/materials/quiz-editor" as any,
+      params: {
+        courseId: String(course.course_id),
+        courseTitle: course.courseName,
+        remedial: "1",
+      },
+    });
+  };
+  const createRemedial = () => {
+    const list = overview?.courses ?? [];
+    if (list.length === 1) openRemedial(list[0]);
+    else if (list.length > 1) setRemedialPickerOpen(true);
+  };
 
   const [rankKey, setRankKey] = useState<number | "overall">("overall");
   const [rankings, setRankings] = useState<RankingRow[] | null>(null);
@@ -495,6 +515,17 @@ export default function AdminAnalytics() {
                   title="At-Risk Students"
                   subtitle="Students with an average below 60% or an early warning. Tap for details."
                 >
+                  {overview.courses.length > 0 && (
+                    <TouchableOpacity
+                      style={styles.remedialBtn}
+                      onPress={createRemedial}
+                    >
+                      <Ionicons name="add" size={16} color="white" />
+                      <Text style={styles.remedialBtnText}>
+                        Create remedial
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {atRisk.length === 0 ? (
                     <EmptyNote text="No students at risk right now." />
                   ) : (
@@ -1015,6 +1046,44 @@ export default function AdminAnalytics() {
         ) : null}
 
         <Modal
+          visible={remedialPickerOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setRemedialPickerOpen(false)}
+        >
+          <View style={styles.overlay}>
+            <View style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Which course is it for?</Text>
+                <TouchableOpacity onPress={() => setRemedialPickerOpen(false)}>
+                  <Ionicons name="close" size={22} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={overview?.courses ?? []}
+                keyExtractor={(c) => String(c.course_id)}
+                style={{ maxHeight: 460 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.studentRow}
+                    onPress={() => openRemedial(item)}
+                  >
+                    <Text style={[styles.studentName, { flex: 1 }]}>
+                      {item.courseName}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={colors.secondaryText}
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
           visible={pickerOpen}
           transparent
           animationType="slide"
@@ -1276,4 +1345,16 @@ const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 3,
     },
     riskText: { fontSize: 11, fontWeight: "700", color: "#C0392B" },
+    remedialBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-end",
+      gap: 4,
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      marginBottom: 10,
+    },
+    remedialBtnText: { color: "white", fontSize: 12, fontWeight: "600" },
   });

@@ -24,6 +24,8 @@ interface QuizRow {
   status: "Draft" | "Open" | "Closed";
   pastDeadline?: boolean;
   subtitle: string;
+  // Remedial: only the chosen at-risk reviewees see it
+  remedial?: boolean;
   maxScore?: number;
   latestScore?: number | null;
 }
@@ -84,7 +86,7 @@ export default function QuizScreen() {
     const { data, error } = await supabase
       .from("assessment")
       .select(
-        "assessment_id, module_id, title, deadline, isPublished, isClosed, closeAfterDeadline, totalItems, module!inner(moduleName, course_id)",
+        "assessment_id, module_id, title, deadline, isPublished, isClosed, closeAfterDeadline, totalItems, remedial_topic_id, module!inner(moduleName, course_id)",
       )
       .eq("module.course_id", courseId)
       .order("deadline", { ascending: true, nullsFirst: false });
@@ -104,16 +106,21 @@ export default function QuizScreen() {
         title: q.title,
         deadline: q.deadline,
         status,
+        remedial: !!q.remedial_topic_id,
         subtitle: `${q.totalItems} ${q.totalItems === 1 ? "question" : "questions"}`,
       };
     });
   };
 
   const fetchStudentQuizzes = async (): Promise<QuizRow[]> => {
-    const { data, error } = await supabase.rpc("get_student_quiz_list", {
-      p_course_id: courseId,
-    });
+    const [{ data, error }, { data: remedialData }] = await Promise.all([
+      supabase.rpc("get_student_quiz_list", { p_course_id: courseId }),
+      supabase.rpc("my_remedial_quiz_ids"),
+    ]);
     if (error) console.error("fetchStudentQuizzes:", error.message);
+    const remedialIds = new Set<number>(
+      ((remedialData as number[]) ?? []).map(Number),
+    );
 
     return ((data as any[]) ?? []).map((q) => ({
       assessment_id: q.assessment_id,
@@ -121,6 +128,7 @@ export default function QuizScreen() {
       title: q.title,
       deadline: q.deadline,
       status: q.isClosed ? "Closed" : "Open",
+      remedial: remedialIds.has(Number(q.assessment_id)),
       pastDeadline: !!q.pastDeadline,
       subtitle: `Attempts used: ${q.attemptsUsed} of ${q.maxAttempts}`,
       maxScore: Number(q.maxScore),
@@ -175,7 +183,35 @@ export default function QuizScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: QuizRow }) => {
+  // General quizzes first, then a divider and the remedial quizzes
+  type ListItem = QuizRow | { divider: true };
+  const general = quizzes.filter((q) => !q.remedial);
+  const remedial = quizzes.filter((q) => q.remedial);
+  const listItems: ListItem[] =
+    remedial.length > 0
+      ? [...general, { divider: true }, ...remedial]
+      : general;
+
+  const renderDivider = () => (
+    <View style={styles.dividerWrap}>
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerLabel}>
+          {isAdmin ? "Remedial quizzes" : "Remedial quizzes for you"}
+        </Text>
+        <View style={styles.dividerLine} />
+      </View>
+      <Text style={styles.dividerHint}>
+        {isAdmin
+          ? "Only the at-risk reviewees chosen for each quiz can see these."
+          : "Extra practice on a topic you can improve. These do not affect your course progress."}
+      </Text>
+    </View>
+  );
+
+  const renderItem = ({ item: entry }: { item: ListItem }) => {
+    if ("divider" in entry) return renderDivider();
+    const item = entry;
     const colors = STATUS_COLORS[item.status];
     return (
       <TouchableOpacity style={styles.card} onPress={() => handlePress(item)}>
@@ -183,6 +219,11 @@ export default function QuizScreen() {
           <Text style={styles.cardTitle} numberOfLines={2}>
             {item.title}
           </Text>
+          {isAdmin && item.remedial && (
+            <View style={styles.remedialTag}>
+              <Text style={styles.remedialTagText}>Remedial</Text>
+            </View>
+          )}
           <Text style={styles.cardSub}>{formatDue(item.deadline)}</Text>
           <Text style={styles.cardMeta}>{item.subtitle}</Text>
           {!isAdmin && (
@@ -277,8 +318,10 @@ export default function QuizScreen() {
         </View>
       ) : (
         <FlatList
-          data={quizzes}
-          keyExtractor={(item) => String(item.assessment_id)}
+          data={listItems}
+          keyExtractor={(item) =>
+            "divider" in item ? "divider" : String(item.assessment_id)
+          }
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -299,6 +342,30 @@ export default function QuizScreen() {
 }
 
 const styles = StyleSheet.create({
+  dividerWrap: { marginTop: 12, marginBottom: 14 },
+  dividerRow: { flexDirection: "row", alignItems: "center" },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#D5D9E2" },
+  dividerLabel: {
+    marginHorizontal: 10,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#5B3FD1",
+  },
+  dividerHint: {
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
+    marginTop: 6,
+  },
+  remedialTag: {
+    alignSelf: "flex-start",
+    backgroundColor: "#EFEDFF",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  remedialTagText: { fontSize: 11, fontWeight: "700", color: "#5B3FD1" },
   closedNote: {
     fontSize: 11,
     color: "#C0392B",
